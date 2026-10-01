@@ -1,0 +1,347 @@
+/**
+ * GeoSentinel GIS & Earth Observation Analyst Workstation
+ * Design System & Global Styles
+ *
+ * Aesthetic guidelines:
+ * - Professional GIS / Defense / Earth-Observation console
+ * - Restrained palette: Light neutral workstation canvas with deep navy/slate operational chrome
+ * - Compact technical typography (IBM Plex Sans / IBM Plex Mono)
+ * - Rectangular, thin-bordered panels (1px solid, 2px radius)
+ * - Dense, structured information architecture
+ */
+
+:root {
+  /* Color Palette - Technical Chrome & Neutrals */
+  --color-canvas: #edf1f6;
+  --color-surface-base: #ffffff;
+  --color-surface-subtle: #f6f8fb;
+  --color-surface-raised: #f0f4f9;
+  --color-surface-sunken: #e5ebf3;
+
+  /* Deep Navy / Slate Technical Navigation & Header */
+  --color-chrome-bg: #0c1424;
+  --color-chrome-panel: #131e34;
+  --color-chrome-border: #233454;
+  --color-chrome-text: #e2e8f0;
+  --color-chrome-muted: #94a3b8;
+  --color-chrome-highlight: #38bdf8;
+
+  /* Workspace Borders & Lines */
+  --color-border-subtle: #dbe2ec;
+  --color-border-standard: #cbd5e1;
+  --color-border-strong: #94a3b8;
+  --color-border-dark: #334155;
+
+  /* Text & Typography */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-text-dim: #94a3b8;
+  --color-text-inverse: #ffffff;
+
+  /* Restrained Operational Status Accents */
+  --color-accent-blue: #0284c7;
+  --color-accent-blue-hover: #0369a1;
+  --color-accent-blue-subtle: #e0f2fe;
+
+  --color-accent-green: #15803d;
+  --color-accent-green-subtle: #ecfdf5;
+
+  --color-accent-amber: #b45309;
+  --color-accent-amber-subtle: #fffbeb;
+
+  --color-accent-red: #be123c;
+  --color-accent-red-subtle: #fff1f2;
+
+  --color-accent-earth: #78350f;
+  --color-accent-earth-subtle: #fef3c7;
+
+  /* Grid & Map Overlays */
+  --color-map-grid: rgba(148, 163, 184, 0.28);
+  --color-aoi-cyan: #06b6d4;
+  --color-aoi-amber: #f59e0b;
+
+  /* Typography Stacks */
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+  /* Geometry & Radii */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+
+  /* Elevation Shadows - Very Subtle / Flat Technical */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-panel: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* Base Reset & Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbars for High-Density Technical Panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-sunken);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-standard);
+  border-radius: var(--radius-xs);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+/* Typography Utilities */
+.font-mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 12px; }
+.text-base { font-size: 13px; }
+.text-md { font-size: 14px; }
+.text-lg { font-size: 16px; font-weight: 600; }
+
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+.text-muted { color: var(--color-text-muted); }
+.text-dim { color: var(--color-text-dim); }
+.text-secondary { color: var(--color-text-secondary); }
+
+/* Technical Panels */
+.panel {
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-standard);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--color-surface-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.panel-body {
+  padding: 10px;
+}
+
+/* Buttons - Technical & Compact */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-standard);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+.btn:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.btn:active {
+  background: var(--color-surface-sunken);
+}
+
+.btn-primary {
+  background: var(--color-accent-blue);
+  border-color: var(--color-accent-blue-hover);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-blue-hover);
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.btn-sm {
+  height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.btn-icon {
+  width: 26px;
+  padding: 0;
+}
+
+.btn-icon.btn-sm {
+  width: 22px;
+}
+
+/* Badges & Status Indicators */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+
+.badge-blue {
+  background: var(--color-accent-blue-subtle);
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+
+.badge-green {
+  background: var(--color-accent-green-subtle);
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.badge-amber {
+  background: var(--color-accent-amber-subtle);
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.badge-red {
+  background: var(--color-accent-red-subtle);
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.badge-neutral {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border-standard);
+  color: var(--color-text-secondary);
+}
+
+/* Status Indicator Dot */
+.status-pip {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-pip-green {
+  background-color: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.6);
+}
+
+.status-pip-amber {
+  background-color: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.6);
+}
+
+.status-pip-blue {
+  background-color: #38bdf8;
+  box-shadow: 0 0 4px rgba(56, 189, 248, 0.6);
+}
+
+/* Input Fields */
+.input {
+  height: 26px;
+  padding: 0 8px;
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-standard);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 1px var(--color-accent-blue);
+}
+
+/* High-Density Data Tables */
+.table-dense {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.table-dense th {
+  text-align: left;
+  padding: 5px 8px;
+  background: var(--color-surface-subtle);
+  border-bottom: 1px solid var(--color-border-standard);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table-dense td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
+.table-dense tr:hover td {
+  background: var(--color-surface-raised);
+}
+
+/* Layout Utilities */
+.flex-row { display: flex; flex-direction: row; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
