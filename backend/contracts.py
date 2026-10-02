@@ -116,6 +116,7 @@ class SearchResult:
     scene: Scene
     retrieval_timestamp: str
     aoi_id: Optional[str] = None
+    tile_image_url: Optional[str] = None
 
 
 @dataclass
@@ -160,6 +161,8 @@ class ChangeResult:
     earliest_scene_id: str
     quality_checks: QualityChecks
     change_mask: Optional[str] = None    # path/URL to mask image, if produced
+    before_image_url: Optional[str] = None
+    after_image_url: Optional[str] = None
 
 
 @dataclass
