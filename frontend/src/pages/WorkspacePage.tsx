@@ -12,6 +12,7 @@ interface WorkspacePageProps {
   activeSection: NavigationSection;
   onSceneChange: (scene: SatelliteScene) => void;
   onCoordinatesHover: (coords: GeoCoordinates) => void;
+  onOpenRetrieval?: () => void;
 }
 
 export const WorkspacePage: React.FC<WorkspacePageProps> = ({
@@ -22,6 +23,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   activeSection,
   onSceneChange,
   onCoordinatesHover,
+  onOpenRetrieval,
 }) => {
   const [notification, setNotification] = useState<string | null>(null);
   const [quickQuery, setQuickQuery] = useState<string>('water body expansion post-monsoon runoff');
@@ -65,8 +67,13 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
               type="text"
               value={quickQuery}
               onChange={(e) => setQuickQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && onOpenRetrieval) {
+                  onOpenRetrieval();
+                }
+              }}
               className="input font-mono"
-              placeholder="Enter semantic retrieval prompt (e.g. 'vegetation flush along river delta')..."
+              placeholder="Enter semantic retrieval prompt (e.g. 'vegetation flush along river delta')... [Press Enter]"
               style={{
                 width: '100%',
                 paddingLeft: '26px',
@@ -75,20 +82,24 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
                 background: 'var(--color-surface-subtle)',
               }}
             />
-            <span style={{
-              position: 'absolute',
-              right: '6px',
-              fontSize: '9px',
-              fontFamily: 'var(--font-mono)',
-              background: 'var(--color-surface-sunken)',
-              border: '1px solid var(--color-border-standard)',
-              padding: '1px 5px',
-              borderRadius: 'var(--radius-xs)',
-              color: 'var(--color-text-muted)',
-              pointerEvents: 'none',
-            }}>
-              SEMANTIC
-            </span>
+            <button
+              onClick={() => onOpenRetrieval && onOpenRetrieval()}
+              style={{
+                position: 'absolute',
+                right: '6px',
+                fontSize: '9px',
+                fontFamily: 'var(--font-mono)',
+                background: 'var(--color-surface-sunken)',
+                border: '1px solid var(--color-border-standard)',
+                padding: '1px 5px',
+                borderRadius: 'var(--radius-xs)',
+                color: 'var(--color-text-secondary)',
+                cursor: 'pointer',
+              }}
+              title="Open full Semantic Retrieval module"
+            >
+              SEARCH F2
+            </button>
           </div>
         </div>
 

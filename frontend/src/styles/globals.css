@@ -345,3 +345,71 @@ html, body {
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
+
+/* Dedicated GIS Catalog & Search Utilities */
+.catalog-card {
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-standard);
+  border-radius: var(--radius-xs);
+  transition: all 0.12s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.catalog-card:hover {
+  border-color: var(--color-accent-blue);
+  box-shadow: var(--shadow-sm);
+  background: #fcfdfe;
+}
+
+.catalog-card.active {
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 1px var(--color-accent-blue);
+  background: #f8fafc;
+}
+
+.table-row-selected {
+  background-color: var(--color-accent-blue-subtle) !important;
+}
+
+.dropzone-box {
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-subtle);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  cursor: pointer;
+}
+
+.dropzone-box:hover {
+  border-color: var(--color-accent-blue);
+  background: var(--color-accent-blue-subtle);
+}
+
+.telemetry-cell {
+  display: flex;
+  flex-direction: column;
+  padding: 3px 8px;
+  background: var(--color-chrome-bg);
+  border: 1px solid var(--color-chrome-border);
+  border-radius: var(--radius-xs);
+}
+
+.telemetry-label {
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  color: var(--color-chrome-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.telemetry-value {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #38bdf8;
+  font-weight: 600;
+  line-height: 1.2;
+}
+

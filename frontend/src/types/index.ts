@@ -82,8 +82,13 @@ export interface SemanticRetrievalQuery {
     endDate: string;
   };
   maxCloudCover?: number;
+  cloudCoverRange?: 'all' | '0-10' | '10-25' | '25-50';
   constellationFilter?: SatelliteConstellation[];
+  sensorFilter?: 'all' | 'Sentinel-2' | 'Landsat-8' | 'Landsat-9';
+  processingLevelFilter?: 'all' | 'Analysis Ready' | 'L2A';
+  spatialRelation?: 'aoi' | 'region' | 'global';
   minSimilarityThreshold?: number;
+  referenceImageName?: string;
 }
 
 export interface RetrievalResult {
@@ -98,6 +103,9 @@ export interface RetrievalResult {
     semanticContext: string;
   }[];
   retrievalTimestamp: string;
+  semanticReason?: string;
+  aoiId?: string;
+  region?: string;
 }
 
 export interface ChangeMetric {

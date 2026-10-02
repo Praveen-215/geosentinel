@@ -193,6 +193,74 @@ export const MOCK_SCENES: SatelliteScene[] = [
     },
     tags: ['Cross-Sensor Calibration', 'Thermal Band Included', 'USGS Tier 1'],
   },
+  {
+    id: 'S2A_MSIL2A_20250720T051649_N0511_R019_T43QBD',
+    satellite: 'Sentinel-2A',
+    sensor: 'Sentinel-2 MSI',
+    acquisitionDate: '2025-07-20T05:16:49Z',
+    cloudCoverPercent: 22.4,
+    resolutionMeters: 10,
+    sunElevationDeg: 63.80,
+    sunAzimuthDeg: 122.10,
+    processingLevel: 'L2A / Analysis Ready',
+    mgrsTile: '43QBD',
+    crs: 'EPSG:32643 - WGS 84 / UTM zone 43N',
+    bbox: {
+      minLon: 73.6000,
+      minLat: 24.5000,
+      maxLon: 73.8500,
+      maxLat: 24.7200,
+    },
+    centerCoordinates: {
+      lat: 24.6132,
+      lon: 73.7215,
+      mgrs: '43QBD 7215 6132',
+      elevationMsl: 582,
+    },
+    bands: SENTINEL2_BANDS,
+    sceneClassificationSummary: {
+      vegetationPercent: 38.0,
+      waterPercent: 11.2,
+      bareSoilPercent: 28.4,
+      urbanPercent: 8.9,
+      cloudPercent: 22.4,
+    },
+    tags: ['Monsoon Surge', 'Water Body Influx', 'High Turbidity'],
+  },
+  {
+    id: 'S2B_MSIL2A_20250615T051701_N0510_R019_T43QBD',
+    satellite: 'Sentinel-2B',
+    sensor: 'Sentinel-2 MSI',
+    acquisitionDate: '2025-06-15T05:17:01Z',
+    cloudCoverPercent: 3.8,
+    resolutionMeters: 10,
+    sunElevationDeg: 69.20,
+    sunAzimuthDeg: 108.50,
+    processingLevel: 'L2A / Analysis Ready',
+    mgrsTile: '43QBD',
+    crs: 'EPSG:32643 - WGS 84 / UTM zone 43N',
+    bbox: {
+      minLon: 73.6000,
+      minLat: 24.5000,
+      maxLon: 73.8500,
+      maxLat: 24.7200,
+    },
+    centerCoordinates: {
+      lat: 24.6132,
+      lon: 73.7215,
+      mgrs: '43QBD 7215 6132',
+      elevationMsl: 582,
+    },
+    bands: SENTINEL2_BANDS,
+    sceneClassificationSummary: {
+      vegetationPercent: 22.1,
+      waterPercent: 6.4,
+      bareSoilPercent: 57.2,
+      urbanPercent: 10.5,
+      cloudPercent: 3.8,
+    },
+    tags: ['Pre-Monsoon Humid', 'Early Inundation', 'Canal Flush'],
+  },
 ];
 
 export const MOCK_CHANGE_METRICS: ChangeMetric[] = [
@@ -258,9 +326,12 @@ export const MOCK_RETRIEVAL_RESULTS: RetrievalResult[] = [
   {
     id: 'ret-01',
     sceneId: 'S2A_MSIL2A_20250918T051641_N0511_R019_T43QBD',
-    similarityScore: 0.948,
+    similarityScore: 0.94,
     semanticRank: 1,
     scene: MOCK_SCENES[0],
+    aoiId: '43QBD / Udaipur Basin',
+    region: 'Rajasthan Sector-4',
+    semanticReason: 'Strong visual and semantic match for expanded surface-water extent near agricultural parcels.',
     featureMatches: [
       { feature: 'Reservoir Perimeter Full Extent', confidence: 0.97, semanticContext: 'Water body boundary matches high fill stage' },
       { feature: 'Agricultural Biomass Peak', confidence: 0.94, semanticContext: 'NIR/Red ratio > 3.8 across valley floor' },
@@ -271,9 +342,12 @@ export const MOCK_RETRIEVAL_RESULTS: RetrievalResult[] = [
   {
     id: 'ret-02',
     sceneId: 'S2B_MSIL2A_20250829T051659_N0511_R019_T43QBD',
-    similarityScore: 0.884,
+    similarityScore: 0.88,
     semanticRank: 2,
     scene: MOCK_SCENES[2],
+    aoiId: '43QBD / Udaipur Basin',
+    region: 'Rajasthan Sector-4',
+    semanticReason: 'Active surface runoff and high-turbidity inundation channels matching post-monsoon drainage signatures.',
     featureMatches: [
       { feature: 'Active Surface Runoff Channels', confidence: 0.91, semanticContext: 'High turbidity spectral response in stream beds' },
       { feature: 'Moderate Cloud Obstruction', confidence: 0.86, semanticContext: 'Circumferential cloud masking in sector north' }
@@ -282,10 +356,58 @@ export const MOCK_RETRIEVAL_RESULTS: RetrievalResult[] = [
   },
   {
     id: 'ret-03',
-    sceneId: 'S2B_MSIL2A_20250512T051709_N0510_R019_T43QBD',
-    similarityScore: 0.722,
+    sceneId: 'LC09_L2SP_148043_20250910_02_T1',
+    similarityScore: 0.84,
     semanticRank: 3,
+    scene: MOCK_SCENES[3],
+    aoiId: '43QBD / Udaipur Basin',
+    region: 'Rajasthan Sector-4',
+    semanticReason: 'Cross-sensor thermal & NDWI correlation verifying increased reservoir surface cooling and shoreline saturation.',
+    featureMatches: [
+      { feature: 'Thermal Band Cooling Signature', confidence: 0.89, semanticContext: 'TIRS 1 surface temperature drop in reservoir' },
+      { feature: 'Water Inundation Mask', confidence: 0.84, semanticContext: 'NDWI threshold > 0.35 across 21.2 km²' }
+    ],
+    retrievalTimestamp: '2026-10-01T22:50:00Z',
+  },
+  {
+    id: 'ret-04',
+    sceneId: 'S2A_MSIL2A_20250720T051649_N0511_R019_T43QBD',
+    similarityScore: 0.79,
+    semanticRank: 4,
+    scene: MOCK_SCENES[4],
+    aoiId: '43QBD / Udaipur Basin',
+    region: 'Rajasthan Sector-4',
+    semanticReason: 'Mid-monsoon water body surge with partial cloud obstruction in north catchment sector.',
+    featureMatches: [
+      { feature: 'Ephemeral Ponding', confidence: 0.82, semanticContext: 'Sub-surface saturation detected in alluvial plains' },
+      { feature: 'Turbid Stream Confluence', confidence: 0.78, semanticContext: 'Sediment plume signature in reservoir inlet' }
+    ],
+    retrievalTimestamp: '2026-10-01T22:50:00Z',
+  },
+  {
+    id: 'ret-05',
+    sceneId: 'S2B_MSIL2A_20250615T051701_N0510_R019_T43QBD',
+    similarityScore: 0.74,
+    semanticRank: 5,
+    scene: MOCK_SCENES[5],
+    aoiId: '43QBD / Udaipur Basin',
+    region: 'Rajasthan Sector-4',
+    semanticReason: 'Moderate match representing pre-peak monsoon moisture accumulation and nascent irrigation canal filling.',
+    featureMatches: [
+      { feature: 'Early Inundation Margin', confidence: 0.76, semanticContext: 'Marginal water shoreline expansion (+2.4 km²)' },
+      { feature: 'Low Atmospheric Interference', confidence: 0.95, semanticContext: '3.8% cloud cover allowing clear spectral calibration' }
+    ],
+    retrievalTimestamp: '2026-10-01T22:50:00Z',
+  },
+  {
+    id: 'ret-06',
+    sceneId: 'S2B_MSIL2A_20250512T051709_N0510_R019_T43QBD',
+    similarityScore: 0.69,
+    semanticRank: 6,
     scene: MOCK_SCENES[1],
+    aoiId: '43QBD / Udaipur Basin',
+    region: 'Rajasthan Sector-4',
+    semanticReason: 'Low similarity dry-season baseline; arid regolith and desiccated reservoir shoreline prior to monsoon influx.',
     featureMatches: [
       { feature: 'Desiccated Water Margin', confidence: 0.88, semanticContext: 'Exposed lakebed clay signature (SWIR reflection)' },
       { feature: 'Clear Atmosphere', confidence: 0.99, semanticContext: '0.012 aerosol optical thickness' }

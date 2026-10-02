@@ -19,18 +19,64 @@ class MockRetrievalService implements RetrievalServiceInterface {
    * Simulates natural-language or embedding-based semantic retrieval against the scene catalog
    */
   async queryScenesBySemanticPrompt(query: SemanticRetrievalQuery): Promise<RetrievalResult[]> {
-    // Artificial mock delay simulating embedding generation and vector search
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Artificial mock delay simulating embedding generation and vector search (approx 180-250ms)
+    await new Promise((resolve) => setTimeout(resolve, 184));
 
     let results = [...MOCK_RETRIEVAL_RESULTS];
 
-    if (query.maxCloudCover !== undefined) {
+    // Temporal filter
+    if (query.temporalWindow?.startDate && query.temporalWindow?.endDate) {
+      const start = new Date(query.temporalWindow.startDate).getTime();
+      const end = new Date(query.temporalWindow.endDate).getTime();
+      results = results.filter((r) => {
+        const sceneDate = new Date(r.scene.acquisitionDate).getTime();
+        return sceneDate >= start && sceneDate <= end;
+      });
+    }
+
+    // Cloud cover range filter
+    if (query.cloudCoverRange && query.cloudCoverRange !== 'all') {
+      if (query.cloudCoverRange === '0-10') {
+        results = results.filter((r) => r.scene.cloudCoverPercent <= 10);
+      } else if (query.cloudCoverRange === '10-25') {
+        results = results.filter((r) => r.scene.cloudCoverPercent > 10 && r.scene.cloudCoverPercent <= 25);
+      } else if (query.cloudCoverRange === '25-50') {
+        results = results.filter((r) => r.scene.cloudCoverPercent > 25 && r.scene.cloudCoverPercent <= 50);
+      }
+    } else if (query.maxCloudCover !== undefined) {
       results = results.filter((r) => r.scene.cloudCoverPercent <= (query.maxCloudCover ?? 100));
     }
 
+    // Sensor / Constellation filter
+    if (query.sensorFilter && query.sensorFilter !== 'all') {
+      results = results.filter((r) => {
+        if (query.sensorFilter === 'Sentinel-2') {
+          return r.scene.satellite.startsWith('Sentinel-2');
+        }
+        return r.scene.satellite === query.sensorFilter;
+      });
+    } else if (query.constellationFilter && query.constellationFilter.length > 0) {
+      results = results.filter((r) => query.constellationFilter?.includes(r.scene.satellite));
+    }
+
+    // Processing level filter
+    if (query.processingLevelFilter && query.processingLevelFilter !== 'all') {
+      results = results.filter((r) => r.scene.processingLevel.includes(query.processingLevelFilter as string));
+    }
+
+    // Similarity threshold filter
     if (query.minSimilarityThreshold !== undefined) {
       results = results.filter((r) => r.similarityScore >= (query.minSimilarityThreshold ?? 0));
     }
+
+    // Sort by rank / similarity descending
+    results.sort((a, b) => b.similarityScore - a.similarityScore);
+
+    // Re-assign semantic ranks 1..N
+    results = results.map((item, idx) => ({
+      ...item,
+      semanticRank: idx + 1,
+    }));
 
     return results;
   }

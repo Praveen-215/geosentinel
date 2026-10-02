@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnalystLayout } from './layouts/AnalystLayout';
 import { WorkspacePage } from './pages/WorkspacePage';
+import { SemanticRetrievalPage } from './pages/SemanticRetrievalPage';
+import { ModuleStandby } from './components/ModuleStandby';
 import { MOCK_CHANGE_METRICS, MOCK_PRIMARY_AOI, MOCK_SCENES } from './data/mockScenes';
 import { AOI, ChangeMetric, GeoCoordinates, NavigationSection, SatelliteScene } from './types';
 
 export const App: React.FC = () => {
   const [currentAoi] = useState<AOI>(MOCK_PRIMARY_AOI);
   const [currentScene, setCurrentScene] = useState<SatelliteScene>(MOCK_SCENES[0]);
+  const [comparisonScene, setComparisonScene] = useState<SatelliteScene | null>(null);
   const [allScenes] = useState<SatelliteScene[]>(MOCK_SCENES);
   const [changeMetrics] = useState<ChangeMetric[]>(MOCK_CHANGE_METRICS);
   const [activeSection, setActiveSection] = useState<NavigationSection>('overview');
   const [hoveredCoordinates, setHoveredCoordinates] = useState<GeoCoordinates | undefined>(undefined);
+
+  // Global Function Key Shortcuts (F1 - F7)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const keyMap: Record<string, NavigationSection> = {
+        F1: 'overview',
+        F2: 'retrieval',
+        F3: 'change-analysis',
+        F4: 'temporal',
+        F5: 'similar-sites',
+        F6: 'review',
+        F7: 'evidence',
+      };
+
+      if (keyMap[e.key]) {
+        e.preventDefault();
+        setActiveSection(keyMap[e.key]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <AnalystLayout
@@ -20,15 +46,38 @@ export const App: React.FC = () => {
       activeSection={activeSection}
       onSelectSection={setActiveSection}
     >
-      <WorkspacePage
-        currentAoi={currentAoi}
-        currentScene={currentScene}
-        allScenes={allScenes}
-        changeMetrics={changeMetrics}
-        activeSection={activeSection}
-        onSceneChange={setCurrentScene}
-        onCoordinatesHover={setHoveredCoordinates}
-      />
+      {activeSection === 'overview' && (
+        <WorkspacePage
+          currentAoi={currentAoi}
+          currentScene={currentScene}
+          allScenes={allScenes}
+          changeMetrics={changeMetrics}
+          activeSection={activeSection}
+          onSceneChange={setCurrentScene}
+          onCoordinatesHover={setHoveredCoordinates}
+          onOpenRetrieval={() => setActiveSection('retrieval')}
+        />
+      )}
+
+      {activeSection === 'retrieval' && (
+        <SemanticRetrievalPage
+          currentAoi={currentAoi}
+          comparisonScene={comparisonScene}
+          onSelectScene={(scene) => setCurrentScene(scene)}
+          onSetComparisonScene={(scene) => setComparisonScene(scene)}
+          onNavigateChangeAnalysis={(scene) => {
+            setComparisonScene(scene);
+            setActiveSection('change-analysis');
+          }}
+        />
+      )}
+
+      {activeSection !== 'overview' && activeSection !== 'retrieval' && (
+        <ModuleStandby
+          sectionId={activeSection}
+          onNavigate={(target) => setActiveSection(target)}
+        />
+      )}
     </AnalystLayout>
   );
 };
