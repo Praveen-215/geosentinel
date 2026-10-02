@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AnalystLayout } from './layouts/AnalystLayout';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { SemanticRetrievalPage } from './pages/SemanticRetrievalPage';
+import { ChangeAnalysisPage } from './pages/ChangeAnalysisPage';
 import { ModuleStandby } from './components/ModuleStandby';
 import { MOCK_CHANGE_METRICS, MOCK_PRIMARY_AOI, MOCK_SCENES } from './data/mockScenes';
 import { AOI, ChangeMetric, GeoCoordinates, NavigationSection, SatelliteScene } from './types';
@@ -72,7 +73,16 @@ export const App: React.FC = () => {
         />
       )}
 
-      {activeSection !== 'overview' && activeSection !== 'retrieval' && (
+      {activeSection === 'change-analysis' && (
+        <ChangeAnalysisPage
+          currentAoi={currentAoi}
+          stagedComparisonScene={comparisonScene}
+          allScenes={allScenes}
+          onNavigateSection={(target) => setActiveSection(target)}
+        />
+      )}
+
+      {activeSection !== 'overview' && activeSection !== 'retrieval' && activeSection !== 'change-analysis' && (
         <ModuleStandby
           sectionId={activeSection}
           onNavigate={(target) => setActiveSection(target)}

@@ -136,6 +136,25 @@ export interface ChangeAnalysisRun {
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FLAGGED';
 }
 
+export interface ChangeAnalysisPayload {
+  aoi: string;
+  t1BaselineScene: string;
+  t2ComparisonScene: string;
+  changeMask?: string;
+  changeType: 'ALL' | 'WATER' | 'VEGETATION' | 'BARE_GROUND' | 'BUILT_UP';
+  confidence: string;
+  earliestSupportedObservation: string;
+  qualityChecks: {
+    cloudCoverT1: number;
+    cloudCoverT2: number;
+    temporalSeparationDays: number;
+    coRegistration: 'PASS' | 'WARN' | 'FAIL';
+    sceneQuality: 'PASS' | 'WARN' | 'FAIL';
+    cloudShadowScreening: 'PASS' | 'WARN' | 'FAIL';
+    overallConfidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  };
+}
+
 export type NavigationSection =
   | 'overview'
   | 'retrieval'

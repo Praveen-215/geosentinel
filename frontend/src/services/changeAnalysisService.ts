@@ -6,7 +6,7 @@
  */
 
 import { MOCK_CHANGE_METRICS } from '../data/mockScenes';
-import { ChangeAnalysisRun, ChangeMetric } from '../types';
+import { ChangeAnalysisPayload, ChangeAnalysisRun, ChangeMetric } from '../types';
 
 export interface ChangeAnalysisServiceInterface {
   runTemporalChangeAnalysis(
@@ -16,9 +16,45 @@ export interface ChangeAnalysisServiceInterface {
   ): Promise<ChangeAnalysisRun>;
   getLatestChangeMetrics(aoiId: string): Promise<ChangeMetric[]>;
   verifyMetric(metricId: string, analystNotes: string): Promise<ChangeMetric>;
+  getChangeAnalysisPayload(
+    baselineSceneId: string,
+    comparisonSceneId: string,
+    aoiId: string,
+    category?: 'ALL' | 'WATER' | 'VEGETATION' | 'BARE_GROUND' | 'BUILT_UP'
+  ): Promise<ChangeAnalysisPayload>;
 }
 
 class MockChangeAnalysisService implements ChangeAnalysisServiceInterface {
+  /**
+   * Returns a standard data contract payload matching future backend service interfaces
+   */
+  async getChangeAnalysisPayload(
+    baselineSceneId: string,
+    comparisonSceneId: string,
+    aoiId: string,
+    category: 'ALL' | 'WATER' | 'VEGETATION' | 'BARE_GROUND' | 'BUILT_UP' = 'ALL'
+  ): Promise<ChangeAnalysisPayload> {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    return {
+      aoi: aoiId,
+      t1BaselineScene: baselineSceneId,
+      t2ComparisonScene: comparisonSceneId,
+      changeMask: 'mock_s2_delta_mask_43qdf_v2.geojson',
+      changeType: category,
+      confidence: 'HIGH',
+      earliestSupportedObservation: '2025-06-18T05:18:51Z',
+      qualityChecks: {
+        cloudCoverT1: 1.4,
+        cloudCoverT2: 6.8,
+        temporalSeparationDays: 129,
+        coRegistration: 'PASS',
+        sceneQuality: 'PASS',
+        cloudShadowScreening: 'PASS',
+        overallConfidence: 'HIGH',
+      },
+    };
+  }
   /**
    * Triggers a multi-temporal change detection run comparing baseline T1 to target T2
    */
