@@ -373,3 +373,97 @@ export interface EvidencePackageDossier {
   eventLog: ProvenanceEvent[];
 }
 
+export type TemporalEvidenceRole =
+  | 'BASELINE'
+  | 'EARLIEST_OBSERVATION'
+  | 'INTERMEDIATE_RESPONSE'
+  | 'ACCELERATED_RESPONSE'
+  | 'PEAK_RESPONSE';
+
+export interface TemporalObservation {
+  id: string;
+  date: string;
+  isoDate: string;
+  sceneId: string;
+  shortSceneId: string;
+  satellite: SatelliteConstellation;
+  sensor: string;
+  platform: string;
+  productLevel: string;
+  acquisitionTimestamp: string;
+  mgrsTile: string;
+  crs: string;
+  processingBaseline: string;
+  cloudCoverPercent: number;
+  sunElevationDeg: number;
+  waterExtentSqKm: number;
+  ndwi: number;
+  ndvi: number;
+  bareGroundSqKm: number;
+  builtUpSqKm: number;
+  evidenceRole: TemporalEvidenceRole;
+  evidenceRoleLabel: string;
+  stateLabel: string;
+  stateDescription: string;
+  qualityStatus: 'PASS' | 'REVIEW' | 'WARN';
+  qualityNote?: string;
+  confidenceState: 'BASELINE' | 'HIGH' | 'MEDIUM / QUALITY FLAG';
+  isEarliestSupported?: boolean;
+  isPeakResponse?: boolean;
+  isBaseline?: boolean;
+}
+
+export interface TemporalMetricPoint {
+  date: string;
+  label: string;
+  value: number;
+  unit: string;
+  secondaryValue?: number;
+  secondaryUnit?: string;
+  formattedValue: string;
+  isEarliest?: boolean;
+  isPeak?: boolean;
+}
+
+export interface TemporalMetricSeries {
+  metricKey: 'water' | 'vegetation' | 'bare-ground' | 'built-up';
+  title: string;
+  unit: string;
+  description: string;
+  disclaimer?: string;
+  points: TemporalMetricPoint[];
+  min: number;
+  max: number;
+}
+
+export interface TemporalIntervalChange {
+  fromObservationId: string;
+  toObservationId: string;
+  fromPeriod: string;
+  toPeriod: string;
+  label: string;
+  deltaSqKm: number;
+  percentageChange: number;
+  daysInterval: number;
+  rateSqKmPerDay: number;
+}
+
+export interface TemporalQualityRecord {
+  observationId: string;
+  date: string;
+  cloudPercent: number;
+  satellite: string;
+  quality: 'PASS' | 'REVIEW' | 'WARN';
+  details: string;
+}
+
+export interface TemporalChangeEvolutionPhase {
+  phaseNumber: string;
+  name: string;
+  dateRange: string;
+  waterExtent: string;
+  state: string;
+  badge?: string;
+  description: string;
+}
+

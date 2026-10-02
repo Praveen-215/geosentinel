@@ -31,8 +31,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'change-analysis', label: 'Change Analysis', icon: GitCompare, shortcut: 'F3' },
   { id: 'review', label: 'Analyst Review', icon: ClipboardCheck, shortcut: 'F4' },
   { id: 'similar-sites', label: 'Similar Sites', icon: Layers, shortcut: 'F5' },
-  { id: 'evidence', label: 'Evidence & Provenance', icon: FileCheck2, shortcut: 'F6', badge: 'NEW' },
-  { id: 'temporal', label: 'Temporal Analysis', icon: Clock, shortcut: 'F7' },
+  { id: 'evidence', label: 'Evidence & Provenance', icon: FileCheck2, shortcut: 'F6' },
+  { id: 'temporal', label: 'Temporal Analysis', icon: Clock, shortcut: 'F7', badge: 'NEW' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({

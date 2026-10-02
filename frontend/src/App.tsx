@@ -6,6 +6,7 @@ import { ChangeAnalysisPage } from './pages/ChangeAnalysisPage';
 import { AnalystReviewPage } from './pages/AnalystReviewPage';
 import { SimilarSitesPage } from './pages/SimilarSitesPage';
 import { EvidenceProvenancePage } from './pages/EvidenceProvenancePage';
+import { TemporalAnalysisPage } from './pages/TemporalAnalysisPage';
 import { ModuleStandby } from './components/ModuleStandby';
 import { MOCK_CHANGE_METRICS, MOCK_PRIMARY_AOI, MOCK_SCENES } from './data/mockScenes';
 import { AOI, AnalystReviewPackage, ChangeMetric, GeoCoordinates, NavigationSection, SatelliteScene } from './types';
@@ -114,12 +115,25 @@ export const App: React.FC = () => {
         />
       )}
 
+      {activeSection === 'temporal' && (
+        <TemporalAnalysisPage
+          currentAoi={currentAoi}
+          allScenes={allScenes}
+          onNavigateSection={(target) => setActiveSection(target)}
+          onStageComparisonScene={(scene) => {
+            setComparisonScene(scene);
+            setActiveSection('change-analysis');
+          }}
+        />
+      )}
+
       {activeSection !== 'overview' &&
         activeSection !== 'retrieval' &&
         activeSection !== 'change-analysis' &&
         activeSection !== 'review' &&
         activeSection !== 'similar-sites' &&
-        activeSection !== 'evidence' && (
+        activeSection !== 'evidence' &&
+        activeSection !== 'temporal' && (
           <ModuleStandby
             sectionId={activeSection}
             onNavigate={(target) => setActiveSection(target)}

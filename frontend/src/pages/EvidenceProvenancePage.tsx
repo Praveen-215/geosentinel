@@ -599,9 +599,28 @@ export const EvidenceProvenancePage: React.FC<EvidenceProvenancePageProps> = ({
                   <Clock size={13} style={{ color: '#0284c7' }} />
                   <span>Temporal Evidence (Multi-Temporal Series)</span>
                 </div>
-                <span className="font-mono text-muted" style={{ fontSize: '9px' }}>
-                  LOCAL MOCK TEMPORAL RECORD
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="font-mono text-muted" style={{ fontSize: '9px' }}>
+                    LOCAL MOCK TEMPORAL RECORD
+                  </span>
+                  <button
+                    onClick={() => onNavigateSection?.('temporal')}
+                    className="btn btn-sm"
+                    style={{
+                      height: '20px',
+                      padding: '0 6px',
+                      fontSize: '9.5px',
+                      gap: '4px',
+                      background: 'rgba(56, 189, 248, 0.1)',
+                      borderColor: 'rgba(56, 189, 248, 0.3)',
+                      color: '#0284c7',
+                      fontWeight: 600,
+                    }}
+                    title="Open Full Multi-Temporal Workstation [F7]"
+                  >
+                    <span>TEMPORAL ANALYSIS [F7] →</span>
+                  </button>
+                </div>
               </div>
 
               <div className="panel-body" style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
