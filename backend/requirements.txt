@@ -1,0 +1,17 @@
+# GeoSentinel backend — Phase 0/1 (ingest)
+numpy>=1.26
+pandas>=2.1
+rasterio>=1.3
+shapely>=2.0
+pyproj>=3.6
+
+# Phase 4+ API (uncomment when implementing)
+# fastapi>=0.115
+# uvicorn[standard]>=0.32
+# pydantic>=2.9
+
+# Phase 2+ retrieval (uncomment when implementing)
+# faiss-cpu>=1.8
+# torch>=2.2
+# open-clip-torch>=2.24
+# pillow>=10.0
