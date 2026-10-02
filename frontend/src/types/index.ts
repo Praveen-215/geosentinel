@@ -217,3 +217,73 @@ export type ViewportDisplayMode =
   | 'ndvi-mask'
   | 'change-heatmap'
   | 'spectral-split';
+
+export type SimilarSiteSearchMode = 'SEMANTIC' | 'VISUAL' | 'LAND-COVER' | 'HYBRID';
+
+export interface SimilarSiteWeights {
+  water: number;
+  vegetation: number;
+  builtUp: number;
+  terrain: number;
+  spatial: number;
+}
+
+export interface SimilarSitesFilter {
+  searchConcept?: string;
+  mode?: SimilarSiteSearchMode;
+  similarityThreshold?: number;
+  searchRadiusKm?: number;
+  maxResults?: number;
+  weights?: SimilarSiteWeights;
+}
+
+export interface SimilarSite {
+  id: string;
+  rank: number;
+  name: string;
+  region: string;
+  latitude: number;
+  longitude: number;
+  searchDistanceKm: number;
+  direction: string;
+  similarityScore: number;
+  semanticScore: number;
+  spectralScore: number;
+  spatialScore: number;
+  waterSignature: 'HIGH' | 'MEDIUM' | 'LOW';
+  vegetationSignature: 'HIGH' | 'MEDIUM' | 'LOW';
+  builtUpSignature: 'HIGH' | 'MEDIUM' | 'LOW';
+  agricultureSignature: 'HIGH' | 'MEDIUM' | 'LOW';
+  terrainSignature: 'HILLY' | 'LOWLAND' | 'LOW' | 'PLATEAU' | 'MOUNTAINOUS';
+  matchReason: string;
+  sceneId: string;
+  acquisitionDate: string;
+  cloudPercent: number;
+  elevationMeters: number;
+  waterExtentSqKm: number;
+  ndwi: number;
+  builtUpSqKm: number;
+  mgrsTile: string;
+  temporalMilestones: {
+    month: string;
+    waterStatus: string;
+    vegetationStatus: string;
+  }[];
+}
+
+export interface SimilarSiteReference {
+  name: string;
+  aoiId: string;
+  aoiName: string;
+  mgrsTile: string;
+  feature: string;
+  sceneId: string;
+  acquisitionDate: string;
+  waterExtentSqKm: number;
+  ndwi: number;
+  builtUpSqKm: number;
+  elevationMeters: number;
+  terrain: string;
+  cloudPercent: number;
+  featureChips: string[];
+}

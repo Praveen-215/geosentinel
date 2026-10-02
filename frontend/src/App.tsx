@@ -4,6 +4,7 @@ import { WorkspacePage } from './pages/WorkspacePage';
 import { SemanticRetrievalPage } from './pages/SemanticRetrievalPage';
 import { ChangeAnalysisPage } from './pages/ChangeAnalysisPage';
 import { AnalystReviewPage } from './pages/AnalystReviewPage';
+import { SimilarSitesPage } from './pages/SimilarSitesPage';
 import { ModuleStandby } from './components/ModuleStandby';
 import { MOCK_CHANGE_METRICS, MOCK_PRIMARY_AOI, MOCK_SCENES } from './data/mockScenes';
 import { AOI, AnalystReviewPackage, ChangeMetric, GeoCoordinates, NavigationSection, SatelliteScene } from './types';
@@ -26,8 +27,8 @@ export const App: React.FC = () => {
         F2: 'retrieval',
         F3: 'change-analysis',
         F4: 'review',
-        F5: 'temporal',
-        F6: 'similar-sites',
+        F5: 'similar-sites',
+        F6: 'temporal',
         F7: 'evidence',
       };
 
@@ -72,6 +73,7 @@ export const App: React.FC = () => {
             setComparisonScene(scene);
             setActiveSection('change-analysis');
           }}
+          onNavigateSimilarSites={() => setActiveSection('similar-sites')}
         />
       )}
 
@@ -93,10 +95,22 @@ export const App: React.FC = () => {
         />
       )}
 
+      {activeSection === 'similar-sites' && (
+        <SimilarSitesPage
+          currentAoi={currentAoi}
+          onNavigateSection={(target) => setActiveSection(target)}
+          onStageComparisonScene={(scene) => {
+            setComparisonScene(scene);
+            setActiveSection('change-analysis');
+          }}
+        />
+      )}
+
       {activeSection !== 'overview' &&
         activeSection !== 'retrieval' &&
         activeSection !== 'change-analysis' &&
-        activeSection !== 'review' && (
+        activeSection !== 'review' &&
+        activeSection !== 'similar-sites' && (
           <ModuleStandby
             sectionId={activeSection}
             onNavigate={(target) => setActiveSection(target)}

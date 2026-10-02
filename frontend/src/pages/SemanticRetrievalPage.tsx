@@ -11,6 +11,7 @@ import {
   GitCompare,
   ArrowRight,
   AlertTriangle,
+  Layers,
 } from 'lucide-react';
 import { AOI, RetrievalResult, SatelliteScene, SemanticRetrievalQuery } from '../types';
 import { retrievalService } from '../services/retrievalService';
@@ -22,6 +23,7 @@ interface SemanticRetrievalPageProps {
   onSelectScene?: (scene: SatelliteScene) => void;
   onSetComparisonScene?: (scene: SatelliteScene) => void;
   onNavigateChangeAnalysis?: (scene: SatelliteScene) => void;
+  onNavigateSimilarSites?: () => void;
 }
 
 export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
@@ -30,6 +32,7 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
   onSelectScene,
   onSetComparisonScene,
   onNavigateChangeAnalysis,
+  onNavigateSimilarSites,
 }) => {
   // Query State
   const [queryText, setQueryText] = useState<string>('water body expansion post-monsoon runoff');
@@ -1137,6 +1140,17 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
                 <ArrowRight size={12} />
                 <span>Open in Change Analysis</span>
               </button>
+
+              {onNavigateSimilarSites && (
+                <button
+                  onClick={onNavigateSimilarSites}
+                  className="btn"
+                  style={{ width: '100%', height: '26px', fontSize: '11px', gap: '5px' }}
+                >
+                  <Layers size={12} />
+                  <span>Discover Similar Sites → [F5]</span>
+                </button>
+              )}
             </div>
           </div>
         )}
