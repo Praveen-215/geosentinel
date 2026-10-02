@@ -287,3 +287,89 @@ export interface SimilarSiteReference {
   cloudPercent: number;
   featureChips: string[];
 }
+
+export interface ProcessingLineageStep {
+  id: string;
+  name: string;
+  status: 'PASS' | 'RECORDED' | 'WARN';
+  description: string;
+  algorithm?: string;
+}
+
+export interface ProvenanceEvent {
+  stepNumber: string;
+  id: string;
+  timestamp: string;
+  module: string;
+  action: string;
+  status: string;
+  details: string;
+}
+
+export interface EvidenceQualityCheck {
+  id: string;
+  name: string;
+  metric: string;
+  status: 'PASS' | 'WARN' | 'FAIL';
+  verified: boolean;
+}
+
+export interface SourceSceneLineage {
+  role: 'BASELINE' | 'COMPARISON' | 'EARLIEST_OBSERVATION';
+  roleLabel: string;
+  sceneId: string;
+  sensor: string;
+  product: string;
+  acquisitionTimestamp: string;
+  mgrsTile: string;
+  cloudCoverPercent: number;
+  processingLevel: string;
+  resolutionMeters: number;
+  sunElevationDeg: number;
+}
+
+export interface TemporalObservationRecord {
+  date: string;
+  shortSceneId: string;
+  waterState: string;
+  cloudPercent: number;
+  evidenceRole: string;
+  isEarliest?: boolean;
+}
+
+export interface EvidencePackageDossier {
+  investigationId: string;
+  packageId: string;
+  aoiId: string;
+  aoiName: string;
+  feature: string;
+  status: string;
+  auditHash: string;
+  generatedTimestamp: string;
+  findingSummary: {
+    changeType: string;
+    baselineValue: string;
+    comparisonValue: string;
+    absoluteChange: string;
+    relativeChange: string;
+    confidence: string;
+    earliestSupportedObservation: string;
+    analysisInterval: string;
+  };
+  analystReview: {
+    reviewId: string;
+    finding: string;
+    disposition: string;
+    reviewStatus: string;
+    evidenceChecklistPassed: string;
+    reviewedAt: string;
+    reviewer: string;
+    analystNotes: string;
+  };
+  sourceScenes: SourceSceneLineage[];
+  processingPipeline: ProcessingLineageStep[];
+  qualityChecks: EvidenceQualityCheck[];
+  temporalTimeline: TemporalObservationRecord[];
+  eventLog: ProvenanceEvent[];
+}
+

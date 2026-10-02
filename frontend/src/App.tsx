@@ -5,6 +5,7 @@ import { SemanticRetrievalPage } from './pages/SemanticRetrievalPage';
 import { ChangeAnalysisPage } from './pages/ChangeAnalysisPage';
 import { AnalystReviewPage } from './pages/AnalystReviewPage';
 import { SimilarSitesPage } from './pages/SimilarSitesPage';
+import { EvidenceProvenancePage } from './pages/EvidenceProvenancePage';
 import { ModuleStandby } from './components/ModuleStandby';
 import { MOCK_CHANGE_METRICS, MOCK_PRIMARY_AOI, MOCK_SCENES } from './data/mockScenes';
 import { AOI, AnalystReviewPackage, ChangeMetric, GeoCoordinates, NavigationSection, SatelliteScene } from './types';
@@ -28,8 +29,8 @@ export const App: React.FC = () => {
         F3: 'change-analysis',
         F4: 'review',
         F5: 'similar-sites',
-        F6: 'temporal',
-        F7: 'evidence',
+        F6: 'evidence',
+        F7: 'temporal',
       };
 
       if (keyMap[e.key]) {
@@ -106,11 +107,19 @@ export const App: React.FC = () => {
         />
       )}
 
+      {activeSection === 'evidence' && (
+        <EvidenceProvenancePage
+          currentAoi={currentAoi}
+          onNavigateSection={(target) => setActiveSection(target)}
+        />
+      )}
+
       {activeSection !== 'overview' &&
         activeSection !== 'retrieval' &&
         activeSection !== 'change-analysis' &&
         activeSection !== 'review' &&
-        activeSection !== 'similar-sites' && (
+        activeSection !== 'similar-sites' &&
+        activeSection !== 'evidence' && (
           <ModuleStandby
             sectionId={activeSection}
             onNavigate={(target) => setActiveSection(target)}

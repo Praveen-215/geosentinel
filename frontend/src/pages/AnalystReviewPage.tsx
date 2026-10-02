@@ -1135,13 +1135,23 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {onNavigateSection && (
-                  <button
-                    onClick={() => onNavigateSection('change-analysis')}
-                    className="btn btn-sm"
-                    style={{ fontSize: '10.5px', height: '28px' }}
-                  >
-                    <span>← Return to Change Analysis [F3]</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => onNavigateSection('change-analysis')}
+                      className="btn btn-sm"
+                      style={{ fontSize: '10.5px', height: '28px' }}
+                    >
+                      <span>← Change Analysis [F3]</span>
+                    </button>
+                    <button
+                      onClick={() => onNavigateSection('evidence')}
+                      className="btn btn-sm"
+                      style={{ fontSize: '10.5px', height: '28px', gap: '4px' }}
+                    >
+                      <FileCheck2 size={12} />
+                      <span>Provenance Lineage [F6] →</span>
+                    </button>
+                  </>
                 )}
 
                 <button
