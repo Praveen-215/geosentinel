@@ -44,7 +44,7 @@ export const ImageryViewport: React.FC<ImageryViewportProps> = ({
     const lon = aoi.bbox.minLon + normX * (aoi.bbox.maxLon - aoi.bbox.minLon);
     const lat = aoi.bbox.maxLat - normY * (aoi.bbox.maxLat - aoi.bbox.minLat);
 
-    const estElevation = Math.round(520 + (Math.sin(normX * 8) + Math.cos(normY * 6)) * 60);
+    const estElevation = Math.round(540 + (Math.sin(normX * 8) + Math.cos(normY * 6)) * 90);
 
     setMousePos({ x, y, lat, lon });
 
@@ -310,7 +310,7 @@ export const ImageryViewport: React.FC<ImageryViewportProps> = ({
           {/* Base Background Landscape */}
           <rect width="1000" height="650" fill={palette.soil} />
 
-          {/* Geological Ridges (Aravalli Range Foothills) */}
+          {/* Geological Ridges (Western Ghats / Sahyadri Escarpment & Sinhagad Ridge) */}
           <path
             d="M -20,120 Q 180,60 380,140 T 780,90 Q 920,130 1020,80 L 1020,0 L -20,0 Z"
             fill="url(#ridgeShade)"
@@ -333,7 +333,7 @@ export const ImageryViewport: React.FC<ImageryViewportProps> = ({
             opacity="0.9"
           />
 
-          {/* Winding River (Berach River Channel) */}
+          {/* Winding River (Mutha & Mula River Drainage Channels) */}
           <path
             d="M 20,40 C 140,80 210,180 290,230 S 420,290 510,310 S 710,360 840,430 S 960,540 1020,590"
             fill="none"
@@ -353,7 +353,7 @@ export const ImageryViewport: React.FC<ImageryViewportProps> = ({
             opacity="0.7"
           />
 
-          {/* Major Reservoir Body (Udaisagar Reservoir) */}
+          {/* Major Reservoir Body (Khadakwasla Reservoir Basin) */}
           <path
             d="M 460,250 C 490,220 560,210 610,230 C 660,250 710,290 690,360 C 670,420 590,430 520,410 C 470,390 440,320 460,250 Z"
             fill="url(#waterGrad)"
@@ -465,7 +465,7 @@ export const ImageryViewport: React.FC<ImageryViewportProps> = ({
                 <g key={`gx-${gx}`}>
                   <line x1={gx} y1="0" x2={gx} y2="650" stroke="#94a3b8" strokeWidth="0.8" strokeDasharray="3 5" />
                   <text x={gx + 4} y="20" fill="#cbd5e1" fontSize="9" fontFamily="var(--font-mono)">
-                    73°{Math.floor(40 + gx / 50)}'E
+                    73°{Math.floor(45 + gx / 65)}'E
                   </text>
                 </g>
               ))}
@@ -473,7 +473,7 @@ export const ImageryViewport: React.FC<ImageryViewportProps> = ({
                 <g key={`gy-${gy}`}>
                   <line x1="0" y1={gy} x2="1000" y2={gy} stroke="#94a3b8" strokeWidth="0.8" strokeDasharray="3 5" />
                   <text x="25" y={gy - 4} fill="#cbd5e1" fontSize="9" fontFamily="var(--font-mono)">
-                    24°{Math.floor(30 + (650 - gy) / 40)}'N
+                    18°{Math.floor(25 + (650 - gy) / 45)}'N
                   </text>
                 </g>
               ))}
@@ -485,35 +485,35 @@ export const ImageryViewport: React.FC<ImageryViewportProps> = ({
             <g fontFamily="var(--font-mono)" fontSize="10" fontWeight="600">
               {/* Reservoir */}
               <g transform="translate(530, 320)">
-                <rect x="-8" y="-12" width="165" height="18" fill="rgba(15, 23, 42, 0.85)" stroke="#38bdf8" strokeWidth="0.8" rx="2" />
+                <rect x="-8" y="-12" width="180" height="18" fill="rgba(15, 23, 42, 0.85)" stroke="#38bdf8" strokeWidth="0.8" rx="2" />
                 <circle cx="-1" cy="-3" r="3" fill="#38bdf8" />
                 <text x="8" y="0" fill="#ffffff" fontSize="9.5">
-                  UDAISAGAR RESERVOIR
+                  KHADAKWASLA RESERVOIR
                 </text>
               </g>
 
               {/* River Flow Label */}
               <g transform="translate(240, 210)">
                 <text x="0" y="0" fill="#bae6fd" fontSize="9" opacity="0.9" fontStyle="italic">
-                  BERACH BASIN DRAINAGE ▶
+                  MUTHA RIVER DRAINAGE ▶
                 </text>
               </g>
 
               {/* Agricultural Sector */}
               <g transform="translate(260, 430)">
-                <rect x="-6" y="-12" width="150" height="17" fill="rgba(15, 23, 42, 0.85)" stroke="#4ade80" strokeWidth="0.8" rx="2" />
+                <rect x="-6" y="-12" width="165" height="17" fill="rgba(15, 23, 42, 0.85)" stroke="#4ade80" strokeWidth="0.8" rx="2" />
                 <circle cx="0" cy="-3" r="3" fill="#22c55e" />
                 <text x="9" y="0" fill="#86efac" fontSize="9">
-                  AGRI SECTOR 4 [KHARIF]
+                  HAVELI CROPLAND [SUGARCANE]
                 </text>
               </g>
 
               {/* Mining / Quarry Fringe */}
               <g transform="translate(740, 190)">
-                <rect x="-6" y="-12" width="135" height="17" fill="rgba(15, 23, 42, 0.85)" stroke="#f59e0b" strokeWidth="0.8" rx="2" />
+                <rect x="-6" y="-12" width="165" height="17" fill="rgba(15, 23, 42, 0.85)" stroke="#f59e0b" strokeWidth="0.8" rx="2" />
                 <circle cx="0" cy="-3" r="3" fill="#f59e0b" />
                 <text x="9" y="0" fill="#fde68a" fontSize="9">
-                  QUARRY LEASE NORTH
+                  HINJAWADI TECH CORRIDOR
                 </text>
               </g>
             </g>

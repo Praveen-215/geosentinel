@@ -144,7 +144,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
           {/* AOI Status Pill */}
           <span className="badge badge-green">
-            AOI 43QBD [L2A ARD]
+            AOI {currentAoi.mgrsGrid} [L2A ARD]
           </span>
         </div>
       </div>
