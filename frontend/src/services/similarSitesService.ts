@@ -7,7 +7,7 @@
 
 import { SimilarSite, SimilarSiteReference, SimilarSitesFilter, SatelliteScene } from '../types';
 import { MOCK_REFERENCE_SITE, MOCK_SIMILAR_SITES } from '../data/mockSimilarSites';
-import { SENTINEL2_BANDS } from '../data/mockScenes';
+import { SENTINEL2_BANDS, SENTINEL2_BAND_RESOLUTION_M } from '../data/mockScenes';
 
 export interface SimilarSitesServiceInterface {
   getReferenceSite(): SimilarSiteReference;
@@ -33,7 +33,7 @@ class MockSimilarSitesService implements SimilarSitesServiceInterface {
     }
 
     if (filter?.searchRadiusKm !== undefined) {
-      results = results.filter((s) => s.searchDistanceKm <= (filter.searchRadiusKm || 150));
+      results = results.filter((s) => (s.searchDistanceKm ?? 0) <= (filter.searchRadiusKm || 150));
     }
 
     if (filter?.maxResults !== undefined) {
@@ -50,44 +50,34 @@ class MockSimilarSitesService implements SimilarSitesServiceInterface {
 
   stageSiteForComparison(site: SimilarSite): SatelliteScene {
     // Convert candidate site to SatelliteScene for seamless F3 bi-temporal comparison
+    // Note: tileId and tileBbox are the authoritative spatial retrieval contract fields.
+    // Classification summary is an optional presentation-only helper for the workstation UI.
     return {
       id: site.sceneId,
       satellite: site.sceneId.startsWith('S2B') ? 'Sentinel-2B' : 'Sentinel-2A',
       sensor: 'Sentinel-2 MSI',
-      acquisitionDate: '2025-09-21T05:18:31Z',
-      cloudCoverPercent: site.cloudPercent,
+      acquisitionDate: site.acquisitionDate || '2025-09-21T05:18:31Z',
+      cloudCoverPercent: site.cloudPercent ?? 5.0,
       resolutionMeters: 10,
       sunElevationDeg: 58.6,
       sunAzimuthDeg: 136.8,
       processingLevel: 'L2A / Analysis Ready',
-      mgrsTile: site.mgrsTile,
-      crs: 'EPSG:32643 - WGS 84 / UTM zone 43N',
-      bbox: {
-        minLon: site.longitude - 0.15,
-        minLat: site.latitude - 0.15,
-        maxLon: site.longitude + 0.15,
-        maxLat: site.latitude + 0.15,
-      },
-      centerCoordinates: {
-        lat: site.latitude,
-        lon: site.longitude,
-        mgrs: `${site.mgrsTile} ${Math.round(site.longitude * 100)} ${Math.round(site.latitude * 100)}`,
-        elevationMsl: site.elevationMeters,
-      },
+      mgrsTile: site.mgrsTile ?? '43QDF',
+      crs: 'EPSG:32643',
+      bbox: site.tileBbox,
+      processingBaseline: '05.11',
+      relativeOrbit: 19,
+      shadowPercent: 0.8,
+      validPercent: 99.2,
       bands: SENTINEL2_BANDS,
+      bandResolutionM: SENTINEL2_BAND_RESOLUTION_M,
       sceneClassificationSummary: {
         vegetationPercent: site.vegetationSignature === 'HIGH' ? 52.4 : 38.6,
         waterPercent: site.waterSignature === 'HIGH' ? 18.2 : 9.4,
         bareSoilPercent: 16.2,
         urbanPercent: site.builtUpSignature === 'HIGH' ? 24.5 : 5.8,
-        cloudPercent: site.cloudPercent,
+        cloudPercent: site.cloudPercent ?? 5.0,
       },
-      tags: [
-        `Site Discovery: ${site.name}`,
-        `Similarity Score: ${site.similarityScore.toFixed(2)}`,
-        site.terrainSignature,
-        `${site.waterExtentSqKm} km² Water Extent`,
-      ],
     };
   }
 }

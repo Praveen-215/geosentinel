@@ -7,7 +7,7 @@ import {
   UserCheck,
   Radio
 } from 'lucide-react';
-import { AOI, SatelliteScene } from '../types';
+import { AOI, SatelliteScene, getSceneCenter } from '../types';
 
 interface HeaderProps {
   currentAoi: AOI;
@@ -20,7 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentScene,
   activeCoordinates
 }) => {
-  const coords = activeCoordinates || currentScene.centerCoordinates;
+  const coords = activeCoordinates || getSceneCenter(currentScene);
 
   return (
     <header style={{

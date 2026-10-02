@@ -48,13 +48,8 @@ class MockRetrievalService implements RetrievalServiceInterface {
     }
 
     // Sensor / Constellation filter
-    if (query.sensorFilter && query.sensorFilter !== 'all') {
-      results = results.filter((r) => {
-        if (query.sensorFilter === 'Sentinel-2') {
-          return r.scene.satellite.startsWith('Sentinel-2');
-        }
-        return r.scene.satellite === query.sensorFilter;
-      });
+    if (query.sensorFilter === 'Sentinel-2') {
+      results = results.filter((r) => r.scene.satellite.startsWith('Sentinel-2'));
     } else if (query.constellationFilter && query.constellationFilter.length > 0) {
       results = results.filter((r) => query.constellationFilter?.includes(r.scene.satellite));
     }

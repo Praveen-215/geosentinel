@@ -110,9 +110,10 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
     if (onQueueForReview) {
       onQueueForReview({
         reviewId: 'EV-2025-0921-01',
+        candidateId: 'change-pune-khadakwasla-2025',
         aoi: currentAoi.code,
         feature: 'Khadakwasla Reservoir Basin',
-        changeType: 'Water Extent Increase',
+        changeType: 'WATER',
         t1Scene: t1Scene.id,
         t2Scene: t2Scene.id,
         t1Date: t1Scene.acquisitionDate.split('T')[0],
@@ -120,7 +121,7 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
         baselineValue: '11.20 km²',
         comparisonValue: '28.45 km²',
         relativeChange: '+154.0%',
-        confidence: 'HIGH',
+        confidence: 0.94,
         disposition: 'pending',
         analystNotes: '',
         status: 'PENDING',
@@ -131,7 +132,16 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
           coRegistration: 'PASS',
           sceneQuality: 'PASS',
           cloudShadowScreening: 'PASS',
+          shadowCoverT1: t1Scene.shadowPercent ?? 0.2,
+          shadowCoverT2: t2Scene.shadowPercent ?? 0.8,
+          validPixelsT1: t1Scene.validPercent ?? 99.8,
+          validPixelsT2: t2Scene.validPercent ?? 98.4,
+          snowHazeScreening: 'PASS',
+          seasonalVariation: 'PASS',
+          illuminationGeometry: 'PASS',
+          radiometricConsistency: 'PASS',
           overallConfidence: 'HIGH',
+          flags: [],
         },
         provenance: {
           sensor: t2Scene.satellite,
@@ -188,6 +198,24 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
 
   // Reusable SVG Cartographic Render Function
   const renderCartographicSvg = (scene: SatelliteScene, isBaseline: boolean) => {
+    // If real image URL / thumbnail is provided, render image crop
+    if (scene.thumbnailUrl) {
+      return (
+        <img
+          src={scene.thumbnailUrl}
+          alt={scene.id}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            display: 'block',
+            opacity: showImagery ? 1 : 0.25,
+            transition: 'opacity 0.15s ease',
+          }}
+        />
+      );
+    }
+
     // True Color vs Spectral palette differences between T1 Dry and T2 Wet
     const isT1Dry = isBaseline || scene.acquisitionDate.includes('-05-') || scene.acquisitionDate.includes('-06-');
 
@@ -1289,7 +1317,7 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
                 marginTop: '2px',
               }}>
                 <span className="text-muted">ANALYSIS CONFIDENCE:</span>
-                <span style={{ color: '#15803d', fontWeight: 700 }}>HIGH</span>
+                <span style={{ color: '#15803d', fontWeight: 700 }}>HIGH (0.94)</span>
               </div>
             </div>
           </div>
@@ -1333,7 +1361,7 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
           <div className="panel" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header">
               <span>Selected Change Evidence</span>
-              <span className="badge badge-blue">CONFIDENCE HIGH</span>
+              <span className="badge badge-blue">CONFIDENCE HIGH (0.94)</span>
             </div>
             <div className="panel-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div>

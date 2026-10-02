@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   Layers,
 } from 'lucide-react';
-import { AOI, RetrievalResult, SatelliteScene, SemanticRetrievalQuery } from '../types';
+import { AOI, RetrievalResult, SatelliteScene, SemanticRetrievalQuery, getSceneCenter } from '../types';
 import { retrievalService } from '../services/retrievalService';
 import { SceneThumbnail } from '../components/SceneThumbnail';
 
@@ -56,7 +56,7 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
   const [startDate, setStartDate] = useState<string>('2025-05-01');
   const [endDate, setEndDate] = useState<string>('2025-10-01');
   const [cloudCoverRange, setCloudCoverRange] = useState<'all' | '0-10' | '10-25' | '25-50'>('all');
-  const [sensorFilter, setSensorFilter] = useState<'all' | 'Sentinel-2' | 'Landsat-8' | 'Landsat-9'>('all');
+  const [sensorFilter, setSensorFilter] = useState<'all' | 'Sentinel-2'>('all');
   const [processingLevel, setProcessingLevel] = useState<'all' | 'Analysis Ready' | 'L2A'>('all');
   const [spatialRelation, setSpatialRelation] = useState<'aoi' | 'region' | 'global'>('aoi');
   const [minSimilarity, setMinSimilarity] = useState<number | undefined>(undefined);
@@ -507,8 +507,6 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
             >
               <option value="all">All Sensors</option>
               <option value="Sentinel-2">Sentinel-2 (MSI)</option>
-              <option value="Landsat-8">Landsat-8 (OLI)</option>
-              <option value="Landsat-9">Landsat-9 (OLI-2)</option>
             </select>
           </div>
 
@@ -799,8 +797,8 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span className="text-muted">SENSOR:</span>
-                          <span>{res.scene.sensor.split(' ')[0]}</span>
+                          <span className="text-muted">TILE ID:</span>
+                          <span style={{ color: 'var(--color-accent-blue)', fontWeight: 600 }}>{res.tileId}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span className="text-muted">LEVEL:</span>
@@ -818,21 +816,23 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
                         color: 'var(--color-text-secondary)',
                         fontStyle: 'normal',
                       }}>
-                        "{res.semanticReason || res.featureMatches[0]?.semanticContext}"
+                        "{res.semanticReason || res.featureMatches?.[0]?.semanticContext || 'Semantic match in target AOI'}"
                       </div>
 
                       {/* Feature Tags */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
-                        {res.featureMatches.map((f, i) => (
-                          <span
-                            key={i}
-                            className="badge badge-neutral"
-                            style={{ fontSize: '9.5px', padding: '1px 5px' }}
-                          >
-                            {f.feature} ({(f.confidence * 100).toFixed(0)}%)
-                          </span>
-                        ))}
-                      </div>
+                      {res.featureMatches && res.featureMatches.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                          {res.featureMatches.map((f, i) => (
+                            <span
+                              key={i}
+                              className="badge badge-neutral"
+                              style={{ fontSize: '9.5px', padding: '1px 5px' }}
+                            >
+                              {f.feature} ({(f.confidence * 100).toFixed(0)}%)
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Action buttons inside card */}
                       <div style={{
@@ -877,6 +877,7 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
                   <tr>
                     <th style={{ width: '55px' }}>Rank</th>
                     <th>Scene Identifier</th>
+                    <th>Tile ID</th>
                     <th>Sensor</th>
                     <th>Acquisition UTC</th>
                     <th>Cloud</th>
@@ -911,6 +912,9 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
                           {res.scene.id}
+                        </td>
+                        <td style={{ color: 'var(--color-accent-blue)', fontWeight: 600 }}>
+                          {res.tileId}
                         </td>
                         <td>{res.scene.satellite} {res.scene.sensor.split(' ')[0]}</td>
                         <td>{res.scene.acquisitionDate.replace('T', ' ').replace('Z', '')}</td>
@@ -1059,27 +1063,29 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
                   </div>
 
                   {/* Feature Confidence Breakdown */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                      Correlated Feature Vectors:
-                    </div>
-                    {selectedResult.featureMatches.map((f, i) => (
-                      <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px' }}>
-                          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{f.feature}</span>
-                          <span className="font-mono" style={{ fontSize: '10px', color: '#0284c7' }}>
-                            {(f.confidence * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <div style={{ width: '100%', height: '4px', background: 'var(--color-surface-sunken)', borderRadius: '1px' }}>
-                          <div style={{ width: `${f.confidence * 100}%`, height: '100%', background: 'var(--color-accent-blue)' }} />
-                        </div>
-                        <div style={{ fontSize: '9.5px', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
-                          {f.semanticContext}
-                        </div>
+                  {selectedResult.featureMatches && selectedResult.featureMatches.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                        Correlated Feature Vectors:
                       </div>
-                    ))}
-                  </div>
+                      {selectedResult.featureMatches.map((f, i) => (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px' }}>
+                            <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{f.feature}</span>
+                            <span className="font-mono" style={{ fontSize: '10px', color: '#0284c7' }}>
+                              {(f.confidence * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div style={{ width: '100%', height: '4px', background: 'var(--color-surface-sunken)', borderRadius: '1px' }}>
+                            <div style={{ width: `${f.confidence * 100}%`, height: '100%', background: 'var(--color-accent-blue)' }} />
+                          </div>
+                          <div style={{ fontSize: '9.5px', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
+                            {f.semanticContext}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1090,9 +1096,24 @@ export const SemanticRetrievalPage: React.FC<SemanticRetrievalPageProps> = ({
                   <span className="font-mono text-xs">{selectedResult.scene.mgrsTile}</span>
                 </div>
                 <div className="panel-body font-mono" style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '10.5px' }}>
+                  {(() => {
+                    const center = getSceneCenter(selectedResult.scene);
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="text-muted">CENTROID:</span>
+                        <span>{center.lat.toFixed(4)}°N  {center.lon.toFixed(4)}°E</span>
+                      </div>
+                    );
+                  })()}
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="text-muted">CENTROID:</span>
-                    <span>{selectedResult.scene.centerCoordinates.lat.toFixed(4)}°N  {selectedResult.scene.centerCoordinates.lon.toFixed(4)}°E</span>
+                    <span className="text-muted">TILE ID:</span>
+                    <span style={{ color: 'var(--color-accent-blue)', fontWeight: 600 }}>{selectedResult.tileId}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className="text-muted">TILE BBOX:</span>
+                    <span style={{ fontSize: '9px' }}>
+                      {selectedResult.tileBbox.minLon.toFixed(2)}, {selectedResult.tileBbox.minLat.toFixed(2)} - {selectedResult.tileBbox.maxLon.toFixed(2)}, {selectedResult.tileBbox.maxLat.toFixed(2)}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span className="text-muted">MGRS TILE:</span>

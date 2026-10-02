@@ -6,7 +6,7 @@
  */
 
 import { MOCK_CHANGE_METRICS } from '../data/mockScenes';
-import { ChangeAnalysisPayload, ChangeAnalysisRun, ChangeMetric } from '../types';
+import { BackendChangeType, ChangeAnalysisPayload, ChangeAnalysisRun, ChangeMetric } from '../types';
 
 export interface ChangeAnalysisServiceInterface {
   runTemporalChangeAnalysis(
@@ -20,7 +20,7 @@ export interface ChangeAnalysisServiceInterface {
     baselineSceneId: string,
     comparisonSceneId: string,
     aoiId: string,
-    category?: 'ALL' | 'WATER' | 'VEGETATION' | 'BARE_GROUND' | 'BUILT_UP'
+    changeType?: BackendChangeType
   ): Promise<ChangeAnalysisPayload>;
 }
 
@@ -32,7 +32,7 @@ class MockChangeAnalysisService implements ChangeAnalysisServiceInterface {
     baselineSceneId: string,
     comparisonSceneId: string,
     aoiId: string,
-    category: 'ALL' | 'WATER' | 'VEGETATION' | 'BARE_GROUND' | 'BUILT_UP' = 'ALL'
+    changeType: BackendChangeType = 'WATER'
   ): Promise<ChangeAnalysisPayload> {
     await new Promise((resolve) => setTimeout(resolve, 120));
 
@@ -41,9 +41,10 @@ class MockChangeAnalysisService implements ChangeAnalysisServiceInterface {
       t1BaselineScene: baselineSceneId,
       t2ComparisonScene: comparisonSceneId,
       changeMask: 'mock_s2_delta_mask_43qdf_v2.geojson',
-      changeType: category,
-      confidence: 'HIGH',
+      changeType,
+      confidence: 0.94,
       earliestSupportedObservation: '2025-06-18T05:18:51Z',
+      earliestSceneId: 'S2B_MSIL2A_20250618T051851_N0510_R019_T43QDF',
       qualityChecks: {
         cloudCoverT1: 1.4,
         cloudCoverT2: 6.8,
@@ -51,7 +52,16 @@ class MockChangeAnalysisService implements ChangeAnalysisServiceInterface {
         coRegistration: 'PASS',
         sceneQuality: 'PASS',
         cloudShadowScreening: 'PASS',
+        shadowCoverT1: 0.2,
+        shadowCoverT2: 0.8,
+        validPixelsT1: 99.8,
+        validPixelsT2: 98.4,
+        snowHazeScreening: 'PASS',
+        seasonalVariation: 'PASS',
+        illuminationGeometry: 'PASS',
+        radiometricConsistency: 'PASS',
         overallConfidence: 'HIGH',
+        flags: [],
       },
     };
   }
@@ -71,7 +81,7 @@ class MockChangeAnalysisService implements ChangeAnalysisServiceInterface {
       baselineSceneId,
       comparisonSceneId,
       executionTimestamp: new Date().toISOString(),
-      algorithm: 'Multi-Temporal Spectral Delta v2.4 (Analysis Ready)',
+      algorithm: 'Bi-Temporal Change Detection (Local Mock)',
       overallAnomalyScore: 78.4,
       confidenceScore: 94.6,
       metrics: MOCK_CHANGE_METRICS,

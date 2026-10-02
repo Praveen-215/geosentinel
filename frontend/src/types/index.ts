@@ -1,9 +1,10 @@
 /**
  * GeoSentinel Analyst Workstation Types
  * Professional Earth Observation (EO) & Multi-Temporal GIS Data Structures
+ * Aligned with backend/contracts.py
  */
 
-export type SatelliteConstellation = 'Sentinel-2A' | 'Sentinel-2B' | 'Landsat-8' | 'Landsat-9';
+export type SatelliteConstellation = 'Sentinel-2A' | 'Sentinel-2B';
 
 export interface SpectralBandInfo {
   band: string;
@@ -12,6 +13,31 @@ export interface SpectralBandInfo {
   centralWavelength: string;
   status: 'nominal' | 'degraded' | 'saturated';
 }
+
+export const SENTINEL2_BAND_METADATA: Record<string, SpectralBandInfo> = {
+  B01: { band: 'B01', name: 'Coastal Aerosol', resolution: '60m', centralWavelength: '443 nm', status: 'nominal' },
+  B02: { band: 'B02', name: 'Blue', resolution: '10m', centralWavelength: '490 nm', status: 'nominal' },
+  B03: { band: 'B03', name: 'Green', resolution: '10m', centralWavelength: '560 nm', status: 'nominal' },
+  B04: { band: 'B04', name: 'Red', resolution: '10m', centralWavelength: '665 nm', status: 'nominal' },
+  B05: { band: 'B05', name: 'Red Edge 1', resolution: '20m', centralWavelength: '705 nm', status: 'nominal' },
+  B06: { band: 'B06', name: 'Red Edge 2', resolution: '20m', centralWavelength: '740 nm', status: 'nominal' },
+  B07: { band: 'B07', name: 'Red Edge 3', resolution: '20m', centralWavelength: '783 nm', status: 'nominal' },
+  B08: { band: 'B08', name: 'NIR Broad', resolution: '10m', centralWavelength: '842 nm', status: 'nominal' },
+  B8A: { band: 'B8A', name: 'NIR Narrow', resolution: '20m', centralWavelength: '865 nm', status: 'nominal' },
+  B09: { band: 'B09', name: 'Water Vapour', resolution: '60m', centralWavelength: '945 nm', status: 'nominal' },
+  B11: { band: 'B11', name: 'SWIR 1', resolution: '20m', centralWavelength: '1610 nm', status: 'nominal' },
+  B12: { band: 'B12', name: 'SWIR 2', resolution: '20m', centralWavelength: '2190 nm', status: 'nominal' },
+};
+
+export const getBandMetadata = (bandKey: string): SpectralBandInfo => {
+  return SENTINEL2_BAND_METADATA[bandKey] || {
+    band: bandKey,
+    name: bandKey,
+    resolution: '10m',
+    centralWavelength: 'N/A',
+    status: 'nominal',
+  };
+};
 
 export interface BoundingBox {
   minLon: number;
@@ -32,17 +58,23 @@ export interface SatelliteScene {
   satellite: SatelliteConstellation;
   sensor: string;
   acquisitionDate: string; // ISO 8601 UTC
-  cloudCoverPercent: number;
+  cloudCoverPercent: number; // 0-100
   resolutionMeters: number;
-  sunElevationDeg: number;
-  sunAzimuthDeg: number;
-  processingLevel: 'L1C' | 'L2A / Analysis Ready' | 'L3 Core';
+  processingLevel: string;
   mgrsTile: string;
-  crs: string;
-  bbox: BoundingBox;
-  centerCoordinates: GeoCoordinates;
-  bands: SpectralBandInfo[];
+  crs: string; // native UTM, e.g. 'EPSG:32643'
+  bbox: BoundingBox; // lon/lat
+  processingBaseline: string; // e.g. '05.10'
+  relativeOrbit: number;
+  shadowPercent: number; // 0-100
+  validPercent: number; // 0-100
+  bands: string[]; // e.g. ['B02', 'B03', 'B04', 'B08', ...]
+  bandResolutionM: Record<string, number>;
+  sunElevationDeg?: number;
+  sunAzimuthDeg?: number;
   thumbnailUrl?: string;
+
+  // UI-derived / optional presentation fields
   sceneClassificationSummary?: {
     vegetationPercent: number;
     waterPercent: number;
@@ -50,7 +82,28 @@ export interface SatelliteScene {
     urbanPercent: number;
     cloudPercent: number;
   };
-  tags: string[];
+}
+
+export type Scene = SatelliteScene;
+
+export const getSceneCenter = (scene: { bbox: BoundingBox; mgrsTile?: string }): GeoCoordinates => {
+  return {
+    lat: Number(((scene.bbox.minLat + scene.bbox.maxLat) / 2).toFixed(4)),
+    lon: Number(((scene.bbox.minLon + scene.bbox.maxLon) / 2).toFixed(4)),
+    mgrs: scene.mgrsTile || '43QDF',
+  };
+};
+
+export interface Tile {
+  tileId: string;
+  aoiId: string;
+  mgrsTile: string;
+  row: number;
+  col: number;
+  sizeM: number;
+  crs: string;
+  nativeBounds: [number, number, number, number];
+  bbox: BoundingBox;
 }
 
 export interface AOI {
@@ -77,6 +130,7 @@ export interface AOI {
 export interface SemanticRetrievalQuery {
   queryText: string;
   referenceSceneId?: string;
+  referenceTileId?: string;
   temporalWindow?: {
     startDate: string;
     endDate: string;
@@ -84,29 +138,36 @@ export interface SemanticRetrievalQuery {
   maxCloudCover?: number;
   cloudCoverRange?: 'all' | '0-10' | '10-25' | '25-50';
   constellationFilter?: SatelliteConstellation[];
-  sensorFilter?: 'all' | 'Sentinel-2' | 'Landsat-8' | 'Landsat-9';
+  sensorFilter?: 'all' | 'Sentinel-2';
   processingLevelFilter?: 'all' | 'Analysis Ready' | 'L2A';
   spatialRelation?: 'aoi' | 'region' | 'global';
   minSimilarityThreshold?: number;
   referenceImageName?: string;
 }
 
-export interface RetrievalResult {
+export interface SearchResult {
   id: string;
   sceneId: string;
-  similarityScore: number; // 0.000 to 1.000
-  semanticRank: number;
+  tileId: string;
+  tileBbox: BoundingBox;
+  similarityScore: number; // 0.0 - 1.0
+  semanticRank: number; // 1 = best
   scene: SatelliteScene;
-  featureMatches: {
+  retrievalTimestamp: string;
+  aoiId?: string;
+  tileImageUrl?: string;
+
+  // Optional presentation fields for current demo UI
+  featureMatches?: {
     feature: string;
     confidence: number;
     semanticContext: string;
   }[];
-  retrievalTimestamp: string;
   semanticReason?: string;
-  aoiId?: string;
   region?: string;
 }
+
+export type RetrievalResult = SearchResult;
 
 export interface ChangeMetric {
   id: string;
@@ -123,43 +184,94 @@ export interface ChangeMetric {
   notes: string;
 }
 
+export interface QualityChecks {
+  cloudCoverT1: number; // 0-100
+  cloudCoverT2: number; // 0-100
+  temporalSeparationDays: number;
+
+  coRegistration: 'PASS' | 'WARN' | 'FAIL';
+  sceneQuality: 'PASS' | 'WARN' | 'FAIL';
+  cloudShadowScreening: 'PASS' | 'WARN' | 'FAIL';
+
+  shadowCoverT1: number; // 0-100
+  shadowCoverT2: number; // 0-100
+
+  validPixelsT1: number; // 0-100
+  validPixelsT2: number; // 0-100
+
+  snowHazeScreening: 'PASS' | 'WARN' | 'FAIL';
+  seasonalVariation: 'PASS' | 'WARN' | 'FAIL';
+  illuminationGeometry: 'PASS' | 'WARN' | 'FAIL';
+  radiometricConsistency: 'PASS' | 'WARN' | 'FAIL';
+
+  overallConfidence: 'HIGH' | 'MEDIUM' | 'LOW';
+
+  flags: string[];
+}
+
+export type BackendChangeType = 'CONSTRUCTION' | 'CLEARANCE' | 'WATER' | 'ROAD';
+export type ChangeType = BackendChangeType;
+
+export type AnalyticalMetricCategory = 'WATER' | 'VEGETATION' | 'BARE_GROUND' | 'BUILT_UP';
+
 export interface ChangeAnalysisRun {
   runId: string;
   aoiId: string;
   baselineSceneId: string;
   comparisonSceneId: string;
   executionTimestamp: string;
-  algorithm: 'Multi-Temporal Spectral Delta v2.4 (Analysis Ready)';
+  algorithm: string;
   overallAnomalyScore: number; // 0 - 100
   confidenceScore: number;
   metrics: ChangeMetric[];
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FLAGGED';
 }
 
+export interface ChangeResult {
+  id: string;
+  aoi: string;
+  tileId: string;
+  t1BaselineScene: string;
+  t2ComparisonScene: string;
+  changeType: BackendChangeType;
+  confidence: number; // 0.0 - 1.0
+  earliestSupportedObservation: string;
+  earliestSceneId: string;
+  qualityChecks: QualityChecks;
+  changeMask?: string;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
+}
+
 export interface ChangeAnalysisPayload {
   aoi: string;
+  tileId?: string;
   t1BaselineScene: string;
   t2ComparisonScene: string;
   changeMask?: string;
-  changeType: 'ALL' | 'WATER' | 'VEGETATION' | 'BARE_GROUND' | 'BUILT_UP';
-  confidence: string;
+  changeType: BackendChangeType;
+  confidence: number; // 0.0 - 1.0
   earliestSupportedObservation: string;
-  qualityChecks: {
-    cloudCoverT1: number;
-    cloudCoverT2: number;
-    temporalSeparationDays: number;
-    coRegistration: 'PASS' | 'WARN' | 'FAIL';
-    sceneQuality: 'PASS' | 'WARN' | 'FAIL';
-    cloudShadowScreening: 'PASS' | 'WARN' | 'FAIL';
-    overallConfidence: 'HIGH' | 'MEDIUM' | 'LOW';
-  };
+  earliestSceneId?: string;
+  qualityChecks: QualityChecks;
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
 }
 
-export type ReviewDisposition = 'pending' | 'confirmed' | 'rejected' | 'flagged';
-export type ReviewStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'FLAGGED_FOR_REVIEW';
+export type ReviewDisposition = 'confirmed' | 'rejected' | 'flagged';
+
+export interface ReviewDecision {
+  reviewId: string;
+  candidateId: string;
+  disposition: ReviewDisposition;
+  reviewedBy: string;
+  reviewedAt: string; // ISO 8601 UTC
+  analystNotes: string;
+}
 
 export interface AnalystReviewPackage {
   reviewId: string;
+  candidateId?: string;
   aoi: string;
   feature: string;
   changeType: string;
@@ -170,21 +282,13 @@ export interface AnalystReviewPackage {
   baselineValue: string;
   comparisonValue: string;
   relativeChange: string;
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-  disposition: ReviewDisposition;
+  confidence: number | 'HIGH' | 'MEDIUM' | 'LOW';
+  disposition: ReviewDisposition | 'pending';
   analystNotes: string;
   reviewedAt?: string;
   reviewedBy?: string;
-  status: ReviewStatus;
-  qualityChecks: {
-    cloudCoverT1: number;
-    cloudCoverT2: number;
-    temporalSeparationDays: number;
-    coRegistration: 'PASS' | 'WARN' | 'FAIL';
-    sceneQuality: 'PASS' | 'WARN' | 'FAIL';
-    cloudShadowScreening: 'PASS' | 'WARN' | 'FAIL';
-    overallConfidence: 'HIGH' | 'MEDIUM' | 'LOW';
-  };
+  status?: ReviewDisplayStatus;
+  qualityChecks: QualityChecks;
   provenance: {
     sensor: string;
     mgrsTile: string;
@@ -200,7 +304,36 @@ export interface AnalystReviewPackage {
     sensor?: string;
     cloudCover?: number;
   }[];
+  beforeImageUrl?: string;
+  afterImageUrl?: string;
+  changeMask?: string;
 }
+
+export type ConfidenceBucket = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export const getConfidenceBucket = (confidence: number): ConfidenceBucket => {
+  if (confidence >= 0.90) return 'HIGH';
+  if (confidence >= 0.70) return 'MEDIUM';
+  return 'LOW';
+};
+
+export const formatConfidence = (confidence: number | string): string => {
+  if (typeof confidence === 'string') return confidence;
+  const bucket = getConfidenceBucket(confidence);
+  const pct = (confidence <= 1.0 ? confidence * 100 : confidence).toFixed(1);
+  return `${bucket} (${pct}%)`;
+};
+
+export type ReviewDisplayStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'FLAGGED';
+
+export const getReviewDisplayStatus = (disposition: ReviewDisposition | 'pending'): ReviewDisplayStatus => {
+  switch (disposition) {
+    case 'confirmed': return 'CONFIRMED';
+    case 'rejected': return 'REJECTED';
+    case 'flagged': return 'FLAGGED';
+    case 'pending': default: return 'PENDING';
+  }
+};
 
 export type NavigationSection =
   | 'overview'
@@ -239,32 +372,40 @@ export interface SimilarSitesFilter {
 
 export interface SimilarSite {
   id: string;
-  rank: number;
-  name: string;
-  region: string;
-  latitude: number;
-  longitude: number;
-  searchDistanceKm: number;
-  direction: string;
-  similarityScore: number;
-  semanticScore: number;
-  spectralScore: number;
-  spatialScore: number;
-  waterSignature: 'HIGH' | 'MEDIUM' | 'LOW';
-  vegetationSignature: 'HIGH' | 'MEDIUM' | 'LOW';
-  builtUpSignature: 'HIGH' | 'MEDIUM' | 'LOW';
-  agricultureSignature: 'HIGH' | 'MEDIUM' | 'LOW';
-  terrainSignature: 'HILLY' | 'LOWLAND' | 'LOW' | 'PLATEAU' | 'MOUNTAINOUS';
-  matchReason: string;
   sceneId: string;
-  acquisitionDate: string;
-  cloudPercent: number;
-  elevationMeters: number;
-  waterExtentSqKm: number;
-  ndwi: number;
-  builtUpSqKm: number;
-  mgrsTile: string;
-  temporalMilestones: {
+  tileId: string;
+  tileBbox: BoundingBox;
+  similarityScore: number;
+  semanticRank: number;
+  scene?: SatelliteScene;
+  aoiId?: string;
+  tileImageUrl?: string;
+
+  // Optional presentation fields for current demo UI
+  rank?: number;
+  name?: string;
+  region?: string;
+  latitude?: number;
+  longitude?: number;
+  searchDistanceKm?: number;
+  direction?: string;
+  semanticScore?: number;
+  spectralScore?: number;
+  spatialScore?: number;
+  waterSignature?: 'HIGH' | 'MEDIUM' | 'LOW';
+  vegetationSignature?: 'HIGH' | 'MEDIUM' | 'LOW';
+  builtUpSignature?: 'HIGH' | 'MEDIUM' | 'LOW';
+  agricultureSignature?: 'HIGH' | 'MEDIUM' | 'LOW';
+  terrainSignature?: 'HILLY' | 'LOWLAND' | 'LOW' | 'PLATEAU' | 'MOUNTAINOUS';
+  matchReason?: string;
+  acquisitionDate?: string;
+  cloudPercent?: number;
+  elevationMeters?: number;
+  waterExtentSqKm?: number;
+  ndwi?: number;
+  builtUpSqKm?: number;
+  mgrsTile?: string;
+  temporalMilestones?: {
     month: string;
     waterStatus: string;
     vegetationStatus: string;
@@ -344,7 +485,7 @@ export interface EvidencePackageDossier {
   aoiName: string;
   feature: string;
   status: string;
-  auditHash: string;
+  auditHash?: string;
   generatedTimestamp: string;
   findingSummary: {
     changeType: string;

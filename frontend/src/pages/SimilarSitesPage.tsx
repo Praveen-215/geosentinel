@@ -64,7 +64,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
   // Filter effect
   useEffect(() => {
     let filtered = MOCK_SIMILAR_SITES.filter(
-      (s) => s.similarityScore >= similarityThreshold && s.searchDistanceKm <= searchRadiusKm
+      (s) => s.similarityScore >= similarityThreshold && (s.searchDistanceKm ?? 0) <= searchRadiusKm
     );
     filtered = filtered.slice(0, maxResults);
     setCandidates(filtered);
@@ -81,7 +81,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
     if (onStageComparisonScene) {
       onStageComparisonScene(stagedScene);
     }
-    setNotification(`Site [${selectedSite.name}] staged as Comparison Scene (T2) for Change Analysis.`);
+    setNotification(`Site [${selectedSite.name || selectedSite.tileId}] staged as Comparison Scene (T2) for Change Analysis.`);
     setTimeout(() => setNotification(null), 5000);
   };
 
@@ -90,6 +90,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
     const isReference = 'featureChips' in site;
     const waterColor = isReference ? '#0284c7' : site.waterSignature === 'HIGH' ? '#0369a1' : '#0284c7';
     const vegColor = (isReference ? site.terrain === 'Sahyadri foothills' : site.vegetationSignature === 'HIGH') ? '#15803d' : '#4d7c0f';
+    const gradKey = ('id' in site ? site.id : site.mgrsTile).replace(/[^a-zA-Z0-9]/g, '');
 
     return (
       <svg
@@ -103,12 +104,12 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
         }}
       >
         <defs>
-          <linearGradient id={`grad-${site.name.replace(/\s+/g, '')}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={`grad-${gradKey}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#1e293b" />
             <stop offset="100%" stopColor="#0f172a" />
           </linearGradient>
         </defs>
-        <rect width="100" height="65" fill={`url(#grad-${site.name.replace(/\s+/g, '')})`} />
+        <rect width="100" height="65" fill={`url(#grad-${gradKey})`} />
         {/* Ridges / Hilly terrain contours */}
         <path d="M 0,15 Q 30,5 60,20 T 100,10 L 100,0 L 0,0 Z" fill="#2d3748" opacity="0.8" />
         <path d="M 0,65 Q 40,45 70,55 T 100,50 L 100,65 Z" fill="#2d3748" opacity="0.8" />
@@ -201,8 +202,10 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
 
         {/* 4. Vectors connecting Reference to Candidates */}
         {candidates.map((site) => {
-          const cx = projectX(site.longitude);
-          const cy = projectY(site.latitude);
+          const siteLon = site.longitude ?? (site.tileBbox ? (site.tileBbox.minLon + site.tileBbox.maxLon) / 2 : 73.85);
+          const siteLat = site.latitude ?? (site.tileBbox ? (site.tileBbox.minLat + site.tileBbox.maxLat) / 2 : 18.52);
+          const cx = projectX(siteLon);
+          const cy = projectY(siteLat);
           const isSelected = site.id === selectedSiteId;
           return (
             <line
@@ -228,9 +231,12 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
 
         {/* 6. Candidate Site Markers */}
         {candidates.map((site) => {
-          const cx = projectX(site.longitude);
-          const cy = projectY(site.latitude);
+          const siteLon = site.longitude ?? (site.tileBbox ? (site.tileBbox.minLon + site.tileBbox.maxLon) / 2 : 73.85);
+          const siteLat = site.latitude ?? (site.tileBbox ? (site.tileBbox.minLat + site.tileBbox.maxLat) / 2 : 18.52);
+          const cx = projectX(siteLon);
+          const cy = projectY(siteLat);
           const isSelected = site.id === selectedSiteId;
+          const siteLabel = site.name || site.tileId;
 
           return (
             <g
@@ -257,7 +263,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
                 fontWeight={isSelected ? 'bold' : 'normal'}
                 fontFamily="monospace"
               >
-                0{site.rank} {site.name.split(' ')[0]}
+                0{site.rank} {siteLabel.split(' ')[0]}
               </text>
             </g>
           );
@@ -737,10 +743,10 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
                       </span>
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                          {site.name}
+                          {site.name || site.tileId}
                         </div>
                         <div className="font-mono text-muted" style={{ fontSize: '9.5px' }}>
-                          {site.region} • {site.latitude.toFixed(2)}°N, {site.longitude.toFixed(2)}°E ({site.searchDistanceKm} km {site.direction})
+                          {site.region || 'Region'} • {(site.latitude ?? 0).toFixed(2)}°N, {(site.longitude ?? 0).toFixed(2)}°E ({site.searchDistanceKm ?? 0} km {site.direction ?? ''})
                         </div>
                       </div>
                     </div>
@@ -797,9 +803,9 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
                     fontFamily: 'var(--font-mono)',
                   }}>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      <span style={{ color: '#0369a1' }}>SEM {site.semanticScore.toFixed(2)}</span>
-                      <span style={{ color: '#15803d' }}>SPEC {site.spectralScore.toFixed(2)}</span>
-                      <span style={{ color: '#7c3aed' }}>SPAT {site.spatialScore.toFixed(2)}</span>
+                      <span style={{ color: '#0369a1' }}>SEM {(site.semanticScore ?? 0).toFixed(2)}</span>
+                      <span style={{ color: '#15803d' }}>SPEC {(site.spectralScore ?? 0).toFixed(2)}</span>
+                      <span style={{ color: '#7c3aed' }}>SPAT {(site.spatialScore ?? 0).toFixed(2)}</span>
                     </div>
 
                     <div style={{ display: 'flex', gap: '4px' }}>
@@ -854,7 +860,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span className="text-muted">COORDINATES:</span>
-                <span>{selectedSite.latitude.toFixed(4)}°N, {selectedSite.longitude.toFixed(4)}°E</span>
+                <span>{(selectedSite.latitude ?? 0).toFixed(4)}°N, {(selectedSite.longitude ?? 0).toFixed(4)}°E</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span className="text-muted">MGRS TILE:</span>
@@ -862,11 +868,11 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span className="text-muted">ELEVATION:</span>
-                <span>{selectedSite.elevationMeters} m MSL</span>
+                <span>{selectedSite.elevationMeters ?? 'N/A'} m MSL</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span className="text-muted">SCENE CLOUD:</span>
-                <span>{selectedSite.cloudPercent}%</span>
+                <span>{selectedSite.cloudPercent ?? selectedSite.scene?.cloudCoverPercent ?? 0}%</span>
               </div>
             </div>
 
@@ -879,30 +885,30 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Semantic Concept Match</span>
-                    <span className="font-mono" style={{ fontWeight: 600, color: '#0284c7' }}>{(selectedSite.semanticScore * 100).toFixed(0)}%</span>
+                    <span className="font-mono" style={{ fontWeight: 600, color: '#0284c7' }}>{((selectedSite.semanticScore ?? 0) * 100).toFixed(0)}%</span>
                   </div>
                   <div style={{ width: '100%', height: '4px', background: 'var(--color-surface-sunken)', borderRadius: '1px' }}>
-                    <div style={{ width: `${selectedSite.semanticScore * 100}%`, height: '100%', background: '#0284c7' }} />
+                    <div style={{ width: `${(selectedSite.semanticScore ?? 0) * 100}%`, height: '100%', background: '#0284c7' }} />
                   </div>
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Spectral Signature Match</span>
-                    <span className="font-mono" style={{ fontWeight: 600, color: '#15803d' }}>{(selectedSite.spectralScore * 100).toFixed(0)}%</span>
+                    <span className="font-mono" style={{ fontWeight: 600, color: '#15803d' }}>{((selectedSite.spectralScore ?? 0) * 100).toFixed(0)}%</span>
                   </div>
                   <div style={{ width: '100%', height: '4px', background: 'var(--color-surface-sunken)', borderRadius: '1px' }}>
-                    <div style={{ width: `${selectedSite.spectralScore * 100}%`, height: '100%', background: '#15803d' }} />
+                    <div style={{ width: `${(selectedSite.spectralScore ?? 0) * 100}%`, height: '100%', background: '#15803d' }} />
                   </div>
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Spatial & Contextual Relation</span>
-                    <span className="font-mono" style={{ fontWeight: 600, color: '#7c3aed' }}>{(selectedSite.spatialScore * 100).toFixed(0)}%</span>
+                    <span className="font-mono" style={{ fontWeight: 600, color: '#7c3aed' }}>{((selectedSite.spatialScore ?? 0) * 100).toFixed(0)}%</span>
                   </div>
                   <div style={{ width: '100%', height: '4px', background: 'var(--color-surface-sunken)', borderRadius: '1px' }}>
-                    <div style={{ width: `${selectedSite.spatialScore * 100}%`, height: '100%', background: '#7c3aed' }} />
+                    <div style={{ width: `${(selectedSite.spatialScore ?? 0) * 100}%`, height: '100%', background: '#7c3aed' }} />
                   </div>
                 </div>
               </div>
@@ -942,7 +948,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                {selectedSite.temporalMilestones.map((tm) => (
+                {selectedSite.temporalMilestones?.map((tm) => (
                   <div
                     key={tm.month}
                     className="font-mono"
@@ -1051,7 +1057,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <GitCompare size={13} style={{ color: '#38bdf8' }} />
-                <span>CROSS-SITE COMPARISON: KHADAKWASLA vs {selectedSite.name.toUpperCase()}</span>
+                <span>CROSS-SITE COMPARISON: KHADAKWASLA vs {(selectedSite.name || selectedSite.tileId).toUpperCase()}</span>
               </div>
               <button
                 onClick={() => setShowCompareModal(false)}
@@ -1125,7 +1131,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
                     </span>
                   </div>
                   <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '6px' }}>
-                    {selectedSite.name}
+                    {selectedSite.name || selectedSite.tileId}
                   </div>
                   <div style={{ height: '100px', marginBottom: '8px' }}>
                     {renderMiniPreview(selectedSite)}
@@ -1163,7 +1169,7 @@ export const SimilarSitesPage: React.FC<SimilarSitesPageProps> = ({
                 <div style={{ fontWeight: 700, color: '#0284c7', marginBottom: '2px' }}>
                   CROSS-CATALOG ANALOG SYNTHESIS:
                 </div>
-                Both {referenceSite.name} and {selectedSite.name} feature mountain-valley impoundment morphologies,
+                Both {referenceSite.name} and {selectedSite.name || selectedSite.tileId} feature mountain-valley impoundment morphologies,
                 rapid monsoon water filling stages (peak in September), and peri-urban pressure fronts.
                 Recommended for transfer learning evaluation.
               </div>

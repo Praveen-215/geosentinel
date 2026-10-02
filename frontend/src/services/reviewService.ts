@@ -5,13 +5,14 @@
  * provenance audit trails, and mock verification payloads.
  */
 
-import { AnalystReviewPackage } from '../types';
+import { AnalystReviewPackage, ReviewDecision, getReviewDisplayStatus } from '../types';
 
 export const DEFAULT_MOCK_REVIEW_PACKAGE: AnalystReviewPackage = {
   reviewId: 'EV-2025-0921-01',
+  candidateId: 'change-pune-khadakwasla-2025',
   aoi: 'AOI-MAHARASHTRA-PUNE-METRO',
   feature: 'Khadakwasla Reservoir Basin',
-  changeType: 'Water Extent Increase',
+  changeType: 'WATER',
   t1Scene: 'S2B_MSIL2A_20250515T051859_N0510_R019_T43QDF',
   t2Scene: 'S2A_MSIL2A_20250921T051831_N0511_R019_T43QDF',
   t1Date: '15 MAY 2025',
@@ -19,7 +20,7 @@ export const DEFAULT_MOCK_REVIEW_PACKAGE: AnalystReviewPackage = {
   baselineValue: '11.20 km²',
   comparisonValue: '28.45 km²',
   relativeChange: '+154.0%',
-  confidence: 'HIGH',
+  confidence: 0.94,
   disposition: 'pending',
   analystNotes: '',
   status: 'PENDING',
@@ -30,7 +31,16 @@ export const DEFAULT_MOCK_REVIEW_PACKAGE: AnalystReviewPackage = {
     coRegistration: 'PASS',
     sceneQuality: 'PASS',
     cloudShadowScreening: 'PASS',
+    shadowCoverT1: 0.2,
+    shadowCoverT2: 0.8,
+    validPixelsT1: 99.8,
+    validPixelsT2: 98.4,
+    snowHazeScreening: 'PASS',
+    seasonalVariation: 'PASS',
+    illuminationGeometry: 'PASS',
+    radiometricConsistency: 'PASS',
     overallConfidence: 'HIGH',
+    flags: [],
   },
   provenance: {
     sensor: 'Sentinel-2',
@@ -86,6 +96,7 @@ export const DEFAULT_MOCK_REVIEW_PACKAGE: AnalystReviewPackage = {
 export interface ReviewServiceInterface {
   getDefaultPackage(): AnalystReviewPackage;
   saveDisposition(pkg: AnalystReviewPackage): Promise<AnalystReviewPackage>;
+  submitReviewDecision(decision: ReviewDecision): Promise<ReviewDecision>;
   exportPackageAsJson(pkg: AnalystReviewPackage): string;
 }
 
@@ -102,11 +113,32 @@ class MockReviewService implements ReviewServiceInterface {
     return this.currentPackage;
   }
 
+  /**
+   * Submits human review decision.
+   * NOTE: This is the isolated persistence boundary. Currently operates in local demo mock mode.
+   * Ready for future backend integration: POST /api/v1/reviews
+   * Does NOT claim backend persistence in current demo.
+   */
+  async submitReviewDecision(decision: ReviewDecision): Promise<ReviewDecision> {
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    this.currentPackage = {
+      ...this.currentPackage,
+      candidateId: decision.candidateId,
+      disposition: decision.disposition,
+      reviewedBy: decision.reviewedBy,
+      reviewedAt: decision.reviewedAt,
+      analystNotes: decision.analystNotes,
+      status: getReviewDisplayStatus(decision.disposition),
+    };
+    return decision;
+  }
+
   exportPackageAsJson(pkg: AnalystReviewPackage): string {
     return JSON.stringify(
       {
         schema: 'https://geosentinel.internal/schemas/analyst-evidence-v1.json',
         reviewId: pkg.reviewId,
+        candidateId: pkg.candidateId || 'change-pune-khadakwasla-2025',
         aoi: pkg.aoi,
         feature: pkg.feature,
         changeType: pkg.changeType,
@@ -124,7 +156,7 @@ class MockReviewService implements ReviewServiceInterface {
         confidence: pkg.confidence,
         analystDisposition: {
           decision: pkg.disposition,
-          status: pkg.status,
+          status: getReviewDisplayStatus(pkg.disposition),
           notes: pkg.analystNotes,
           reviewedAt: pkg.reviewedAt || new Date().toISOString(),
           reviewedBy: pkg.reviewedBy || 'ANALYST_LOCAL_SESSION',
@@ -136,6 +168,7 @@ class MockReviewService implements ReviewServiceInterface {
           mode: 'DEMO / LOCAL MOCK',
           system: 'GeoSentinel Analyst Workstation v0.1.0',
           exportedAt: new Date().toISOString(),
+          backendPersistence: 'UNCOMMITTED / LOCAL MOCK ONLY (PENDING BACKEND API)',
         },
       },
       null,

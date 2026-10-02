@@ -17,7 +17,6 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
   // Determine seasonal palette based on acquisition date & cloud cover
   const isDrySeason = scene.acquisitionDate.includes('-05-') || scene.acquisitionDate.includes('-06-');
   const isPeakMonsoon = scene.acquisitionDate.includes('-08-') || scene.acquisitionDate.includes('-09-');
-  const isLandsat = scene.satellite.startsWith('Landsat');
 
   const waterColor = isDrySeason ? '#1e3a5f' : '#0c4a6e';
   const waterHighlight = isDrySeason ? '#2563eb' : '#0284c7';
@@ -35,6 +34,13 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
       borderRadius: 'var(--radius-xs)',
       border: '1px solid var(--color-border-standard)',
     }}>
+      {scene.thumbnailUrl ? (
+        <img
+          src={scene.thumbnailUrl}
+          alt={scene.id}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      ) : (
       <svg
         viewBox="0 0 300 180"
         preserveAspectRatio="xMidYMid slice"
@@ -135,6 +141,7 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
         <line x1="200" y1="0" x2="200" y2="180" stroke="#cbd5e1" strokeWidth="0.5" strokeDasharray="2 3" opacity="0.3" />
         <line x1="0" y1="90" x2="300" y2="90" stroke="#cbd5e1" strokeWidth="0.5" strokeDasharray="2 3" opacity="0.3" />
       </svg>
+      )}
 
       {/* Technical HUD Overlays */}
       {showOverlay && (
@@ -152,7 +159,7 @@ export const SceneThumbnail: React.FC<SceneThumbnailProps> = ({
             color: '#38bdf8',
             fontWeight: 600,
           }}>
-            {isLandsat ? 'L9 30m' : 'S2 10m'}
+            {scene.satellite.includes('Sentinel-2') ? 'S2 10m' : `${scene.resolutionMeters}m`}
           </div>
 
           <div style={{

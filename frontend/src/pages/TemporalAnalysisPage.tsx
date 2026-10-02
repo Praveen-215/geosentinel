@@ -29,7 +29,7 @@ import {
   SatelliteScene,
   TemporalMetricSeries
 } from '../types';
-import { MOCK_PRIMARY_AOI, MOCK_SCENES } from '../data/mockScenes';
+import { MOCK_PRIMARY_AOI, MOCK_SCENES, SENTINEL2_BANDS, SENTINEL2_BAND_RESOLUTION_M } from '../data/mockScenes';
 import {
   temporalAnalysisService,
   BaselineComparisonResult
@@ -93,9 +93,12 @@ export const TemporalAnalysisPage: React.FC<TemporalAnalysisPageProps> = ({
       mgrsTile: selectedObs.mgrsTile,
       crs: selectedObs.crs,
       bbox: currentAoi.bbox,
-      centerCoordinates: currentAoi.center,
-      bands: [],
-      tags: [selectedObs.stateLabel, selectedObs.evidenceRoleLabel],
+      processingBaseline: selectedObs.processingBaseline || '05.10',
+      relativeOrbit: 19,
+      shadowPercent: 0.8,
+      validPercent: 99.2,
+      bands: SENTINEL2_BANDS,
+      bandResolutionM: SENTINEL2_BAND_RESOLUTION_M,
     };
   };
 

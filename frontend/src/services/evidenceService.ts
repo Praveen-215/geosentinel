@@ -8,11 +8,18 @@
 import { EvidencePackageDossier } from '../types';
 import { MOCK_EVIDENCE_DOSSIER } from '../data/mockEvidence';
 
+export interface ProvenanceVerificationStatus {
+  statusLabel: 'DEMO / LOCAL MOCK VERIFIED';
+  pipelineStatus: 'REAL PROVENANCE PIPELINE PENDING';
+  isLocalDemo: boolean;
+  message: string;
+}
+
 export interface EvidenceServiceInterface {
   getEvidenceDossier(): Promise<EvidencePackageDossier>;
   exportDossierAsJson(dossier: EvidencePackageDossier): string;
   exportDossierAsMarkdown(dossier: EvidencePackageDossier): string;
-  verifyAuditHash(hash: string): boolean;
+  getVerificationStatus(): ProvenanceVerificationStatus;
 }
 
 class MockEvidenceService implements EvidenceServiceInterface {
@@ -35,10 +42,11 @@ class MockEvidenceService implements EvidenceServiceInterface {
           feature: dossier.feature,
         },
         auditIntegrity: {
-          hashAlgorithm: 'SHA-256',
-          hash: dossier.auditHash,
+          verificationStatus: 'DEMO / LOCAL MOCK VERIFIED',
+          packageId: dossier.packageId,
           generatedAt: dossier.generatedTimestamp,
           status: dossier.status,
+          backendProvenance: 'PENDING BACKEND PROVENANCE PIPELINE',
         },
         findingSummary: dossier.findingSummary,
         analystReviewRecord: dossier.analystReview,
@@ -65,7 +73,7 @@ class MockEvidenceService implements EvidenceServiceInterface {
 **AOI:** ${dossier.aoiName} (${dossier.aoiId})
 **Target Feature:** ${dossier.feature}
 **Status:** ${dossier.status}
-**Audit Integrity Hash:** \`${dossier.auditHash}\`
+**Audit Integrity:** LOCAL MOCK VERIFIED (Pending Backend Provenance Pipeline)
 **Generated:** ${dossier.generatedTimestamp}
 
 ---
@@ -115,8 +123,13 @@ ${dossier.eventLog
 `;
   }
 
-  verifyAuditHash(hash: string): boolean {
-    return hash === this.dossier.auditHash;
+  getVerificationStatus(): ProvenanceVerificationStatus {
+    return {
+      statusLabel: 'DEMO / LOCAL MOCK VERIFIED',
+      pipelineStatus: 'REAL PROVENANCE PIPELINE PENDING',
+      isLocalDemo: true,
+      message: 'Cryptographic provenance verification deferred until backend pipeline integration.',
+    };
   }
 }
 

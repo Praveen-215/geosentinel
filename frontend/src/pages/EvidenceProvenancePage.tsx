@@ -42,14 +42,14 @@ export const EvidenceProvenancePage: React.FC<EvidenceProvenancePageProps> = ({
   // Export Modal state
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'markdown'>('json');
-  const [copiedAuditHash, setCopiedAuditHash] = useState<boolean>(false);
+  const [copiedPackageId, setCopiedPackageId] = useState<boolean>(false);
   const [copiedExport, setCopiedExport] = useState<boolean>(false);
 
-  // Copy Audit Hash handler
-  const handleCopyAuditHash = () => {
-    navigator.clipboard.writeText(dossier.auditHash);
-    setCopiedAuditHash(true);
-    setTimeout(() => setCopiedAuditHash(false), 2500);
+  // Copy Package ID handler
+  const handleCopyPackageId = () => {
+    navigator.clipboard.writeText(dossier.packageId);
+    setCopiedPackageId(true);
+    setTimeout(() => setCopiedPackageId(false), 2500);
   };
 
   // Copy Export content handler
@@ -137,7 +137,7 @@ export const EvidenceProvenancePage: React.FC<EvidenceProvenancePageProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button
-              onClick={handleCopyAuditHash}
+              onClick={handleCopyPackageId}
               className="btn btn-sm font-mono"
               style={{
                 height: '24px',
@@ -147,10 +147,10 @@ export const EvidenceProvenancePage: React.FC<EvidenceProvenancePageProps> = ({
                 background: 'rgba(255, 255, 255, 0.05)',
                 color: '#cbd5e1',
               }}
-              title="Copy SHA-256 Audit Integrity Hash"
+              title="Copy Evidence Package ID"
             >
-              {copiedAuditHash ? <Check size={11} color="#22c55e" /> : <Copy size={11} />}
-              <span>{copiedAuditHash ? 'HASH COPIED!' : 'HASH: 7f4a...e9f0'}</span>
+              {copiedPackageId ? <Check size={11} color="#22c55e" /> : <Copy size={11} />}
+              <span>{copiedPackageId ? 'ID COPIED!' : `ID: ${dossier.packageId}`}</span>
             </button>
 
             <button
@@ -172,7 +172,7 @@ export const EvidenceProvenancePage: React.FC<EvidenceProvenancePageProps> = ({
             </button>
 
             <span className="font-mono text-xs" style={{ color: '#b45309', fontSize: '9.5px', marginLeft: '4px' }}>
-              DEMO / LOCAL MOCK
+              {evidenceService.getVerificationStatus().statusLabel}
             </span>
           </div>
         </div>
@@ -918,7 +918,7 @@ export const EvidenceProvenancePage: React.FC<EvidenceProvenancePageProps> = ({
               </pre>
 
               <div className="font-mono text-muted" style={{ fontSize: '9px' }}>
-                INTEGRITY AUDIT HASH: {dossier.auditHash}
+                AUDIT VERIFICATION: {evidenceService.getVerificationStatus().statusLabel} • {evidenceService.getVerificationStatus().pipelineStatus}
               </div>
             </div>
 

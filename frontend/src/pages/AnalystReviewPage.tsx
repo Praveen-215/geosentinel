@@ -18,7 +18,7 @@ import {
   AnalystReviewPackage,
   NavigationSection,
   ReviewDisposition,
-  ReviewStatus,
+  formatConfidence,
 } from '../types';
 import { DEFAULT_MOCK_REVIEW_PACKAGE, reviewService } from '../services/reviewService';
 
@@ -44,9 +44,9 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
   useEffect(() => {
     if (stagedReviewPackage) {
       setReviewPkg(stagedReviewPackage);
-      setSelectedDisposition(stagedReviewPackage.disposition);
+      setSelectedDisposition(stagedReviewPackage.disposition || 'pending');
       setAnalystNotes(stagedReviewPackage.analystNotes || '');
-      setReviewStatus(stagedReviewPackage.status);
+      setReviewStatus(stagedReviewPackage.status || 'PENDING');
     }
   }, [stagedReviewPackage]);
 
@@ -54,7 +54,7 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
   const [activeLayer, setActiveLayer] = useState<EvidenceViewLayer>('mask');
 
   // Analyst Disposition decision state (mutually exclusive)
-  const [selectedDisposition, setSelectedDisposition] = useState<ReviewDisposition>(
+  const [selectedDisposition, setSelectedDisposition] = useState<ReviewDisposition | 'pending'>(
     reviewPkg.disposition || 'pending'
   );
 
@@ -62,7 +62,9 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
   const [analystNotes, setAnalystNotes] = useState<string>(reviewPkg.analystNotes || '');
 
   // Review status
-  const [reviewStatus, setReviewStatus] = useState<ReviewStatus>(reviewPkg.status || 'PENDING');
+  const [reviewStatus, setReviewStatus] = useState<'PENDING' | 'CONFIRMED' | 'REJECTED' | 'FLAGGED'>(
+    reviewPkg.status || 'PENDING'
+  );
 
   // Save review state
   const [isSaved, setIsSaved] = useState<boolean>(reviewPkg.status !== 'PENDING');
@@ -79,14 +81,14 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
 
   // Map disposition to ReviewStatus
-  const getStatusForDisposition = (disp: ReviewDisposition): ReviewStatus => {
+  const getStatusForDisposition = (disp: ReviewDisposition | 'pending'): 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'FLAGGED' => {
     switch (disp) {
       case 'confirmed':
         return 'CONFIRMED';
       case 'rejected':
         return 'REJECTED';
       case 'flagged':
-        return 'FLAGGED_FOR_REVIEW';
+        return 'FLAGGED';
       default:
         return 'PENDING';
     }
@@ -114,18 +116,28 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
     const updatedPackage: AnalystReviewPackage = {
       ...reviewPkg,
       disposition: selectedDisposition,
-      status: finalStatus,
+      status: finalStatus as any,
       analystNotes: analystNotes.trim(),
       reviewedAt: nowUtc,
       reviewedBy: 'ANALYST_01_DESK',
     };
+
+    // Forward to reviewService persistent boundary
+    await reviewService.submitReviewDecision({
+      reviewId: reviewPkg.reviewId,
+      candidateId: reviewPkg.candidateId || 'change-pune-khadakwasla-2025',
+      disposition: selectedDisposition,
+      reviewedBy: 'ANALYST_01_DESK',
+      reviewedAt: new Date().toISOString(),
+      analystNotes: analystNotes.trim(),
+    });
 
     const saved = await reviewService.saveDisposition(updatedPackage);
     setReviewPkg(saved);
     setReviewStatus(finalStatus);
     setIsSaved(true);
     setSavedTimestamp(nowUtc);
-    setBannerMessage(`REVIEW RECORDED — ${saved.reviewId} — STATUS: ${finalStatus} — LOCAL SESSION ONLY`);
+    setBannerMessage(`REVIEW RECORDED — ${saved.reviewId} — STATUS: ${finalStatus} — LOCAL DEMO MOCK ONLY (PENDING BACKEND API)`);
   };
 
   // Handle Copy Export JSON
@@ -136,12 +148,34 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
     setTimeout(() => setCopiedExport(false), 2500);
   };
 
-  // Render SVG cartography for evidence inspection
+  // Render cartography or real PNG evidence inspection
   const renderEvidenceSvg = () => {
     const isT1 = activeLayer === 't1';
+    const isT2 = activeLayer === 't2';
     const isMask = activeLayer === 'mask';
 
-    // Palette
+    // Real image URL inspection when provided by backend ChangeResult
+    if (isT1 && reviewPkg.beforeImageUrl) {
+      return (
+        <img
+          src={reviewPkg.beforeImageUrl}
+          alt="T1 Baseline Evidence Crop"
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+        />
+      );
+    }
+
+    if (isT2 && reviewPkg.afterImageUrl) {
+      return (
+        <img
+          src={reviewPkg.afterImageUrl}
+          alt="T2 Comparison Evidence Crop"
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+        />
+      );
+    }
+
+    // Palette fallback for local mock / SVG visualization
     const soilColor = isT1 ? '#7c6853' : '#3f4738';
     const ridgeColor = isT1 ? '#44382c' : '#223021';
     const vegColor = isT1 ? '#a38f65' : '#15803d';
@@ -452,7 +486,7 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
                 REJECTED
               </span>
             )}
-            {reviewStatus === 'FLAGGED_FOR_REVIEW' && (
+            {reviewStatus === 'FLAGGED' && (
               <span style={{
                 color: '#f59e0b',
                 fontWeight: 700,
@@ -736,7 +770,7 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
             <div className="panel">
               <div className="panel-header" style={{ justifyContent: 'space-between' }}>
                 <span>Selected Finding</span>
-                <span className="badge badge-blue">CONFIDENCE {reviewPkg.confidence}</span>
+                <span className="badge badge-blue">CONFIDENCE {formatConfidence(reviewPkg.confidence)}</span>
               </div>
               <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <div>
@@ -785,14 +819,14 @@ export const AnalystReviewPage: React.FC<AnalystReviewPageProps> = ({
                   <div>
                     <div className="text-muted" style={{ fontSize: '9px' }}>CONFIDENCE</div>
                     <div style={{ fontWeight: 700, fontSize: '12px', color: '#0284c7' }}>
-                      {reviewPkg.confidence}
+                      {formatConfidence(reviewPkg.confidence)}
                     </div>
                     <div style={{ fontSize: '8.5px', color: 'var(--color-text-muted)' }}>MULTI-SPECTRAL</div>
                   </div>
                 </div>
 
                 <div className="font-mono text-muted" style={{ fontSize: '9px', textAlign: 'right' }}>
-                  LOCAL MOCK ANALYSIS • ALGORITHM: MULTI-TEMPORAL SPECTRAL DELTA V2.4
+                  LOCAL MOCK ANALYSIS • BI-TEMPORAL CHANGE DETECTION
                 </div>
               </div>
             </div>

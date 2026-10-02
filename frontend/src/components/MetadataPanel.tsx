@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Database
 } from 'lucide-react';
-import { AOI, ChangeMetric, SatelliteScene } from '../types';
+import { AOI, ChangeMetric, SatelliteScene, getBandMetadata } from '../types';
 
 interface MetadataPanelProps {
   scene: SatelliteScene;
@@ -243,7 +243,7 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
           <div className="panel">
             <div className="panel-header">
               <span>Sentinel-2 MSI Radiometric Bands</span>
-              <span className="badge badge-blue">10 BANDS</span>
+              <span className="badge badge-blue">{scene.bands.length} BANDS</span>
             </div>
             <table className="table-dense font-mono">
               <thead>
@@ -256,17 +256,21 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {scene.bands.map((b) => (
-                  <tr key={b.band}>
-                    <td className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{b.band}</td>
-                    <td style={{ color: 'var(--color-text-secondary)' }}>{b.name}</td>
-                    <td>{b.resolution}</td>
-                    <td>{b.centralWavelength}</td>
-                    <td>
-                      <span className="status-pip status-pip-green" title="Nominal" />
-                    </td>
-                  </tr>
-                ))}
+                {scene.bands.map((bandKey) => {
+                  const meta = getBandMetadata(bandKey);
+                  const resM = scene.bandResolutionM?.[bandKey] ?? meta.resolution;
+                  return (
+                    <tr key={bandKey}>
+                      <td className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{bandKey}</td>
+                      <td style={{ color: 'var(--color-text-secondary)' }}>{meta.name}</td>
+                      <td>{typeof resM === 'number' ? `${resM}m` : resM}</td>
+                      <td>{meta.centralWavelength}</td>
+                      <td>
+                        <span className="status-pip status-pip-green" title={meta.status} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
