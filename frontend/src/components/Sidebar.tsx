@@ -28,10 +28,10 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: Compass, shortcut: 'F1' },
   { id: 'retrieval', label: 'Semantic Retrieval', icon: SearchCode, shortcut: 'F2', badge: '3' },
-  { id: 'change-analysis', label: 'Change Analysis', icon: GitCompare, shortcut: 'F3', badge: 'NEW' },
-  { id: 'temporal', label: 'Temporal Analysis', icon: Clock, shortcut: 'F4' },
-  { id: 'similar-sites', label: 'Similar Sites', icon: Layers, shortcut: 'F5' },
-  { id: 'review', label: 'Analyst Review', icon: ClipboardCheck, shortcut: 'F6' },
+  { id: 'change-analysis', label: 'Change Analysis', icon: GitCompare, shortcut: 'F3' },
+  { id: 'review', label: 'Analyst Review', icon: ClipboardCheck, shortcut: 'F4', badge: 'NEW' },
+  { id: 'temporal', label: 'Temporal Analysis', icon: Clock, shortcut: 'F5' },
+  { id: 'similar-sites', label: 'Similar Sites', icon: Layers, shortcut: 'F6' },
   { id: 'evidence', label: 'Evidence', icon: FileCheck2, shortcut: 'F7' },
 ];
 

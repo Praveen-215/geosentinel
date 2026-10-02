@@ -155,6 +155,53 @@ export interface ChangeAnalysisPayload {
   };
 }
 
+export type ReviewDisposition = 'pending' | 'confirmed' | 'rejected' | 'flagged';
+export type ReviewStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'FLAGGED_FOR_REVIEW';
+
+export interface AnalystReviewPackage {
+  reviewId: string;
+  aoi: string;
+  feature: string;
+  changeType: string;
+  t1Scene: string;
+  t2Scene: string;
+  t1Date: string;
+  t2Date: string;
+  baselineValue: string;
+  comparisonValue: string;
+  relativeChange: string;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  disposition: ReviewDisposition;
+  analystNotes: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  status: ReviewStatus;
+  qualityChecks: {
+    cloudCoverT1: number;
+    cloudCoverT2: number;
+    temporalSeparationDays: number;
+    coRegistration: 'PASS' | 'WARN' | 'FAIL';
+    sceneQuality: 'PASS' | 'WARN' | 'FAIL';
+    cloudShadowScreening: 'PASS' | 'WARN' | 'FAIL';
+    overallConfidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  };
+  provenance: {
+    sensor: string;
+    mgrsTile: string;
+    processingLevel: string;
+    sourceCatalog: string;
+    spatialResolution: string;
+  };
+  supportingObservations: {
+    date: string;
+    label: string;
+    context?: string;
+    isEarliest?: boolean;
+    sensor?: string;
+    cloudCover?: number;
+  }[];
+}
+
 export type NavigationSection =
   | 'overview'
   | 'retrieval'

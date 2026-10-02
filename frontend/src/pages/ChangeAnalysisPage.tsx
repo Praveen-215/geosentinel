@@ -10,7 +10,7 @@ import {
   Clock,
   RotateCcw,
 } from 'lucide-react';
-import { AOI, SatelliteScene, NavigationSection } from '../types';
+import { AOI, SatelliteScene, NavigationSection, AnalystReviewPackage } from '../types';
 import { MOCK_SCENES } from '../data/mockScenes';
 
 interface ChangeAnalysisPageProps {
@@ -18,6 +18,7 @@ interface ChangeAnalysisPageProps {
   stagedComparisonScene?: SatelliteScene | null;
   allScenes: SatelliteScene[];
   onNavigateSection?: (section: NavigationSection) => void;
+  onQueueForReview?: (pkg: AnalystReviewPackage) => void;
 }
 
 type ComparisonMode = 'side-by-side' | 'swipe' | 'overlay';
@@ -28,6 +29,7 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
   stagedComparisonScene,
   allScenes,
   onNavigateSection,
+  onQueueForReview,
 }) => {
   // T1 Baseline scene is the May 15 2025 Pre-Monsoon Dry Baseline
   const t1BaselineDefault = allScenes.find((s) => s.id.includes('20250515')) || allScenes[1] || MOCK_SCENES[1];
@@ -102,8 +104,86 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
     setReviewQueued(true);
     const now = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setReviewQueuedTime(now);
-    setNotification(`Evidence Dossier [CR-43QDF-2025] queued for Analyst Review at ${now} UTC.`);
+    setNotification(`Evidence Package [EV-2025-0921-01] queued for Analyst Review at ${now} UTC.`);
     setTimeout(() => setNotification(null), 5000);
+
+    if (onQueueForReview) {
+      onQueueForReview({
+        reviewId: 'EV-2025-0921-01',
+        aoi: currentAoi.code,
+        feature: 'Khadakwasla Reservoir Basin',
+        changeType: 'Water Extent Increase',
+        t1Scene: t1Scene.id,
+        t2Scene: t2Scene.id,
+        t1Date: t1Scene.acquisitionDate.split('T')[0],
+        t2Date: t2Scene.acquisitionDate.split('T')[0],
+        baselineValue: '11.20 km²',
+        comparisonValue: '28.45 km²',
+        relativeChange: '+154.0%',
+        confidence: 'HIGH',
+        disposition: 'pending',
+        analystNotes: '',
+        status: 'PENDING',
+        qualityChecks: {
+          cloudCoverT1: t1Scene.cloudCoverPercent,
+          cloudCoverT2: t2Scene.cloudCoverPercent,
+          temporalSeparationDays: temporalDays,
+          coRegistration: 'PASS',
+          sceneQuality: 'PASS',
+          cloudShadowScreening: 'PASS',
+          overallConfidence: 'HIGH',
+        },
+        provenance: {
+          sensor: t2Scene.satellite,
+          mgrsTile: '43QDF',
+          processingLevel: 'L2A / LOCAL MOCK',
+          sourceCatalog: 'LOCAL DEMO CATALOG',
+          spatialResolution: '10m BOA Multi-Spectral',
+        },
+        supportingObservations: [
+          {
+            date: '15 MAY 2025',
+            label: 'Pre-Monsoon Dry Baseline',
+            context: 'Desiccated reservoir basin and exposed dry mudflat perimeter.',
+            isEarliest: false,
+            sensor: 'Sentinel-2B',
+            cloudCover: 1.4,
+          },
+          {
+            date: '18 JUN 2025',
+            label: 'Monsoon Onset',
+            context: 'Initial water / vegetation transition within the selected temporal series.',
+            isEarliest: true,
+            sensor: 'Sentinel-2B',
+            cloudCover: 4.2,
+          },
+          {
+            date: '23 JUL 2025',
+            label: 'Ghats Orographic Surge',
+            context: 'Heavy orographic precipitation along Sahyadri ridge crests.',
+            isEarliest: false,
+            sensor: 'Sentinel-2A',
+            cloudCover: 18.5,
+          },
+          {
+            date: '31 AUG 2025',
+            label: 'High Discharge Inflow',
+            context: 'Active spillway discharge and turbid sediment runoff plumes.',
+            isEarliest: false,
+            sensor: 'Sentinel-2B',
+            cloudCover: 12.4,
+          },
+          {
+            date: '21 SEP 2025',
+            label: 'Post-Monsoon Peak',
+            context: 'Catchment reservoir at 100% capacity; peak observed inundation area.',
+            isEarliest: false,
+            sensor: 'Sentinel-2A',
+            cloudCover: 6.8,
+          },
+        ],
+      });
+    }
   };
 
   // Reusable SVG Cartographic Render Function
@@ -1322,7 +1402,7 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
                       <span>QUEUED FOR REVIEW</span>
                     </div>
                     <div className="font-mono" style={{ fontSize: '9.5px', color: '#475569' }}>
-                      AUDIT #CR-43QDF-01 @ {reviewQueuedTime || '09:00:00'} UTC
+                      EV-2025-0921-01 @ {reviewQueuedTime || '09:00:00'} UTC
                     </div>
                     {onNavigateSection && (
                       <button
@@ -1330,7 +1410,7 @@ export const ChangeAnalysisPage: React.FC<ChangeAnalysisPageProps> = ({
                         className="btn btn-sm"
                         style={{ marginTop: '4px', width: '100%', fontSize: '10px' }}
                       >
-                        <span>Open in Review Module [F6]</span>
+                        <span>Open in Review Module [F4]</span>
                         <ArrowRight size={10} />
                       </button>
                     )}

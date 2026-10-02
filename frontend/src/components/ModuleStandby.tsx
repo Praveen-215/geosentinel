@@ -11,9 +11,9 @@ const SECTION_METADATA: Record<NavigationSection, { title: string; shortcut: str
   overview: { title: 'Overview Workstation', shortcut: 'F1', desc: 'Primary cartographic observation canvas & telemetry.' },
   retrieval: { title: 'Semantic Retrieval', shortcut: 'F2', desc: 'Natural-language & visual similarity satellite catalog search.' },
   'change-analysis': { title: 'Multi-Temporal Change Analysis', shortcut: 'F3', desc: 'Bi-temporal spectral delta detection & anomaly segmentation.' },
-  temporal: { title: 'Temporal Analysis & Timeseries', shortcut: 'F4', desc: 'Long-term NDVI/NDWI seasonal variation charts.' },
-  'similar-sites': { title: 'Similar Sites Geospatial Explorer', shortcut: 'F5', desc: 'Cross-AOI geographical analog retrieval across MGRS grid tiles.' },
-  review: { title: 'Analyst Review & Verification Queue', shortcut: 'F6', desc: 'Human-in-the-loop validation of algorithmic spectral flags.' },
+  review: { title: 'Analyst Review & Verification Queue', shortcut: 'F4', desc: 'Human-in-the-loop validation of algorithmic spectral flags.' },
+  temporal: { title: 'Temporal Analysis & Timeseries', shortcut: 'F5', desc: 'Long-term NDVI/NDWI seasonal variation charts.' },
+  'similar-sites': { title: 'Similar Sites Geospatial Explorer', shortcut: 'F6', desc: 'Cross-AOI geographical analog retrieval across MGRS grid tiles.' },
   evidence: { title: 'Evidence Dossier & Export', shortcut: 'F7', desc: 'Analyst mission briefings and GeoJSON/PDF intelligence packages.' },
 };
 
@@ -84,7 +84,7 @@ export const ModuleStandby: React.FC<ModuleStandbyProps> = ({ sectionId, onNavig
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>ACTIVE CONSOLES:</span>
-              <span style={{ color: '#15803d' }}>F1 (Overview) & F2 (Semantic Retrieval)</span>
+              <span style={{ color: '#15803d' }}>F1 (Overview), F2 (Semantic Retrieval), F3 (Change Analysis) & F4 (Analyst Review)</span>
             </div>
           </div>
 

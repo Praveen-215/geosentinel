@@ -3,14 +3,16 @@ import { AnalystLayout } from './layouts/AnalystLayout';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { SemanticRetrievalPage } from './pages/SemanticRetrievalPage';
 import { ChangeAnalysisPage } from './pages/ChangeAnalysisPage';
+import { AnalystReviewPage } from './pages/AnalystReviewPage';
 import { ModuleStandby } from './components/ModuleStandby';
 import { MOCK_CHANGE_METRICS, MOCK_PRIMARY_AOI, MOCK_SCENES } from './data/mockScenes';
-import { AOI, ChangeMetric, GeoCoordinates, NavigationSection, SatelliteScene } from './types';
+import { AOI, AnalystReviewPackage, ChangeMetric, GeoCoordinates, NavigationSection, SatelliteScene } from './types';
 
 export const App: React.FC = () => {
   const [currentAoi] = useState<AOI>(MOCK_PRIMARY_AOI);
   const [currentScene, setCurrentScene] = useState<SatelliteScene>(MOCK_SCENES[0]);
   const [comparisonScene, setComparisonScene] = useState<SatelliteScene | null>(null);
+  const [stagedReviewPackage, setStagedReviewPackage] = useState<AnalystReviewPackage | null>(null);
   const [allScenes] = useState<SatelliteScene[]>(MOCK_SCENES);
   const [changeMetrics] = useState<ChangeMetric[]>(MOCK_CHANGE_METRICS);
   const [activeSection, setActiveSection] = useState<NavigationSection>('overview');
@@ -23,9 +25,9 @@ export const App: React.FC = () => {
         F1: 'overview',
         F2: 'retrieval',
         F3: 'change-analysis',
-        F4: 'temporal',
-        F5: 'similar-sites',
-        F6: 'review',
+        F4: 'review',
+        F5: 'temporal',
+        F6: 'similar-sites',
         F7: 'evidence',
       };
 
@@ -79,15 +81,27 @@ export const App: React.FC = () => {
           stagedComparisonScene={comparisonScene}
           allScenes={allScenes}
           onNavigateSection={(target) => setActiveSection(target)}
+          onQueueForReview={(pkg) => setStagedReviewPackage(pkg)}
         />
       )}
 
-      {activeSection !== 'overview' && activeSection !== 'retrieval' && activeSection !== 'change-analysis' && (
-        <ModuleStandby
-          sectionId={activeSection}
-          onNavigate={(target) => setActiveSection(target)}
+      {activeSection === 'review' && (
+        <AnalystReviewPage
+          currentAoi={currentAoi}
+          stagedReviewPackage={stagedReviewPackage}
+          onNavigateSection={(target) => setActiveSection(target)}
         />
       )}
+
+      {activeSection !== 'overview' &&
+        activeSection !== 'retrieval' &&
+        activeSection !== 'change-analysis' &&
+        activeSection !== 'review' && (
+          <ModuleStandby
+            sectionId={activeSection}
+            onNavigate={(target) => setActiveSection(target)}
+          />
+        )}
     </AnalystLayout>
   );
 };
