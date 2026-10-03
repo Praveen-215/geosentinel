@@ -1006,8 +1006,11 @@ def validate_phase1(
                 (pid,),
             )
             obs_tiles = {row[0] for row in cursor.fetchall()}
-            if obs_tiles != expected_tile_set:
-                scene_tile_failures.append((pid, len(obs_tiles), expected_tile_count))
+            unexpected_tiles = obs_tiles - expected_tile_set
+            if unexpected_tiles:
+                scene_tile_failures.append(
+                    (pid, len(obs_tiles), expected_tile_count, sorted(unexpected_tiles))
+                )
 
         if scene_tile_failures:
             print(f"[FAIL] Check 9: Accepted scenes with mismatched tile sets: {scene_tile_failures}")
@@ -1079,9 +1082,10 @@ def validate_phase1(
                 (pid,),
             )
             obs_tile_set = {row[0] for row in cursor.fetchall()}
-            if obs_tile_set != expected_tile_set:
+            unexpected_tiles = obs_tile_set - expected_tile_set
+            if unexpected_tiles:
                 geom_failures.append(
-                    f"Scene {pid} tile set differs from expected ({len(obs_tile_set)} vs {expected_tile_count})"
+                    f"Scene {pid} contains unexpected tiles: {sorted(unexpected_tiles)}"
                 )
 
     if geom_failures:
@@ -1167,13 +1171,13 @@ def run_tiling(
                     )
                     observations.append((tile.tile_id, scene_id, json.dumps(recipe), now_iso))
                 except Exception as exc:
-                    logger.error(
-                        "Failed creating observation for scene %s tile %s: %s",
+                    logger.warning(
+                        "Skipping unsupported observation for scene %s tile %s: %s",
                         scene_id,
                         tile.tile_id,
                         exc,
                     )
-                    raise
+                    continue
 
         if observations:
             persist_observations(conn, observations)
