@@ -1,0 +1,2 @@
+product_id,satellite,sensor,acquisition_date,cloud_cover_percent,resolution_meters,processing_level,mgrs_tile,crs,bbox,processing_baseline,relative_orbit,shadow_percent,valid_percent,bands,band_resolution_m
+S2A_43QCA_20240104_0_L2A,Sentinel-2,MSI,2024-01-04,0.0,10,L2A,43QCA,EPSG:32643,"[73.75, 18.48, 73.9, 18.6]",05.00,090,0.0,100.0,"B02,B03,B04,B05,B06,B07,B08,B11,B12,SCL","{'B02': 10, 'B03': 10, 'B04': 10, 'B05': 20, 'B06': 20, 'B07': 20, 'B08': 10, 'B11': 20, 'B12': 20, 'SCL': 20}"
