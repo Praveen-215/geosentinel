@@ -18,3 +18,5 @@ venv/
 *.npy
 *.faiss
 .ipynb_checkpoints/
+# Track frontend environment template
+!frontend/.env.example
