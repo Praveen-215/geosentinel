@@ -40,35 +40,34 @@ logger = logging.getLogger("geosentinel.tiling")
 # ---------------------------------------------------------------------------
 # Optional geospatial dependencies
 # ---------------------------------------------------------------------------
-try:
-    import pyproj
-    import rasterio
-    from rasterio.crs import CRS
-    from rasterio.warp import transform_bounds, transform_geom
-    from rasterio.windows import Window
-    from shapely.geometry import box, mapping, shape
-    from shapely.geometry.base import BaseGeometry
-    from shapely.ops import unary_union
-    HAS_GEOSPATIAL = True
-except ImportError:
-    HAS_GEOSPATIAL = False
-    rasterio = None
-    CRS = None
-    Window = None
-    transform_bounds = None
-    transform_geom = None
-    box = None
-    mapping = None
-    shape = None
-    BaseGeometry = None
-    unary_union = None
+
+import pyproj
+import rasterio
+from rasterio.crs import CRS
+from rasterio.warp import transform_bounds, transform_geom
+from rasterio.windows import Window
+from shapely.geometry import box, mapping, shape
+from shapely.geometry.base import BaseGeometry
+from shapely.ops import unary_union
+#    HAS_GEOSPATIAL = True
+#except ImportError:
+#    HAS_GEOSPATIAL = False
+ #   rasterio = None
+ #   CRS = None
+ #   Window = None
+ #   transform_bounds = None
+ #   transform_geom = None
+ #   box = None
+ #   mapping = None
+ #   shape = None
+ #   BaseGeometry = None
+ #   unary_union = None
 
 # ---------------------------------------------------------------------------
 # Configuration and Constants
 # ---------------------------------------------------------------------------
 DEFAULT_AOI_ID = "AOI-MAHARASHTRA-PUNE-METRO"
 DEFAULT_AOI_CRS = "EPSG:4326"
-DEFAULT_MGRS_TILE = "43QDF"
 DEFAULT_PROCESSING_CRS = "EPSG:32643"
 DEFAULT_TILE_SIZE_M = 2560
 
@@ -118,114 +117,28 @@ TILE_OBSERVATIONS_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS tile_observations (
     tile_id TEXT NOT NULL,
     scene_id TEXT NOT NULL,
-    chip_recipe_json TEXT NOT NULL,
+    recipe JSON NOT NULL,
     created_at TEXT NOT NULL,
+    cloud_pct REAL DEFAULT 0.0,
+    shadow_pct REAL DEFAULT 0.0,
+    snow_pct REAL DEFAULT 0.0,
+    clear_pct REAL DEFAULT 100.0,
+    nodata_pct REAL DEFAULT 0.0,
+    other_pct REAL DEFAULT 0.0,
     PRIMARY KEY (tile_id, scene_id),
-    FOREIGN KEY (tile_id) REFERENCES tiles(tile_id),
-    FOREIGN KEY (scene_id) REFERENCES scenes(product_id)
+    FOREIGN KEY (tile_id) REFERENCES tiles (tile_id) ON DELETE CASCADE
 );
 """
 
 
-# ---------------------------------------------------------------------------
-# Mathematical UTM 43N / WGS84 Fallback (Snyder Transverse Mercator)
-# ---------------------------------------------------------------------------
-def _wgs84_to_utm43n(lon: float, lat: float) -> tuple[float, float]:
-    """Forward Transverse Mercator projection for UTM Zone 43N (EPSG:32643)."""
-    a = 6378137.0
-    f = 1.0 / 298.257223563
-    e2 = 2.0 * f - f * f
-    e_prime2 = e2 / (1.0 - e2)
-    k0 = 0.9996
-    lon0 = 75.0
-    lat_rad = math.radians(lat)
-    lon_rad = math.radians(lon)
-    lon0_rad = math.radians(lon0)
-    sin_lat = math.sin(lat_rad)
-    cos_lat = math.cos(lat_rad)
-    tan_lat = math.tan(lat_rad)
-    N = a / math.sqrt(1.0 - e2 * sin_lat**2)
-    T = tan_lat**2
-    C = e_prime2 * cos_lat**2
-    A = (lon_rad - lon0_rad) * cos_lat
-    M = a * (
-        (1.0 - e2 / 4.0 - 3.0 * e2**2 / 64.0 - 5.0 * e2**3 / 256.0) * lat_rad
-        - (3.0 * e2 / 8.0 + 3.0 * e2**2 / 32.0 + 45.0 * e2**3 / 1024.0) * math.sin(2.0 * lat_rad)
-        + (15.0 * e2**2 / 256.0 + 45.0 * e2**3 / 1024.0) * math.sin(4.0 * lat_rad)
-        - (35.0 * e2**3 / 3072.0) * math.sin(6.0 * lat_rad)
-    )
-    x = (
-        k0
-        * N
-        * (
-            A
-            + (1.0 - T + C) * A**3 / 6.0
-            + (5.0 - 18.0 * T + T**2 + 72.0 * C - 58.0 * e_prime2) * A**5 / 120.0
-        )
-        + 500000.0
-    )
-    y = k0 * (
-        M
-        + N
-        * tan_lat
-        * (
-            A**2 / 2.0
-            + (5.0 - T + 9.0 * C + 4.0 * C**2) * A**4 / 24.0
-            + (61.0 - 58.0 * T + T**2 + 600.0 * C - 330.0 * e_prime2) * A**6 / 720.0
-        )
-    )
-    return x, y
 
-
-def _utm43n_to_wgs84(x: float, y: float) -> tuple[float, float]:
-    """Inverse Transverse Mercator projection for UTM Zone 43N (EPSG:32643)."""
-    a = 6378137.0
-    f = 1.0 / 298.257223563
-    e2 = 2.0 * f - f * f
-    e_prime2 = e2 / (1.0 - e2)
-    k0 = 0.9996
-    lon0 = 75.0
-    e1 = (1.0 - math.sqrt(1.0 - e2)) / (1.0 + math.sqrt(1.0 - e2))
-    M = y / k0
-    mu = M / (a * (1.0 - e2 / 4.0 - 3.0 * e2**2 / 64.0 - 5.0 * e2**3 / 256.0))
-    phi1_rad = (
-        mu
-        + (3.0 * e1 / 2.0 - 27.0 * e1**3 / 32.0) * math.sin(2.0 * mu)
-        + (21.0 * e1**2 / 16.0 - 55.0 * e1**4 / 32.0) * math.sin(4.0 * mu)
-        + (151.0 * e1**3 / 96.0) * math.sin(6.0 * mu)
-        + (1097.0 * e1**4 / 512.0) * math.sin(8.0 * mu)
-    )
-    sin_phi1 = math.sin(phi1_rad)
-    cos_phi1 = math.cos(phi1_rad)
-    tan_phi1 = math.tan(phi1_rad)
-    N1 = a / math.sqrt(1.0 - e2 * sin_phi1**2)
-    T1 = tan_phi1**2
-    C1 = e_prime2 * cos_phi1**2
-    R1 = a * (1.0 - e2) / ((1.0 - e2 * sin_phi1**2) ** 1.5)
-    D = (x - 500000.0) / (N1 * k0)
-    lat_rad = phi1_rad - (N1 * tan_phi1 / R1) * (
-        D**2 / 2.0
-        - (5.0 + 3.0 * T1 + 10.0 * C1 - 4.0 * C1**2 - 9.0 * e_prime2) * D**4 / 24.0
-        + (61.0 + 90.0 * T1 + 298.0 * C1 + 45.0 * T1**2 - 252.0 * e_prime2 - 3.0 * C1**2)
-        * D**6
-        / 720.0
-    )
-    lon_rad = math.radians(lon0) + (
-        D
-        - (1.0 + 2.0 * T1 + C1) * D**3 / 6.0
-        + (5.0 - 2.0 * C1 + 28.0 * T1 - 3.0 * C1**2 + 8.0 * e_prime2 + 24.0 * T1**2)
-        * D**5
-        / 120.0
-    ) / cos_phi1
-    return math.degrees(lon_rad), math.degrees(lat_rad)
 
 
 # ---------------------------------------------------------------------------
 # AOI Geometry and Coordinate Handling
 # ---------------------------------------------------------------------------
 def load_aoi(path: Path) -> Any:
-    """
-    Load AOI geometry from a GeoJSON file.
+    """Load AOI geometry from a GeoJSON file.
     Supports FeatureCollection, Feature, or bare geometry objects.
     """
     if not path.is_file():
@@ -237,47 +150,49 @@ def load_aoi(path: Path) -> Any:
     except json.JSONDecodeError as exc:
         raise ValueError(f"Malformed GeoJSON in {path}: {exc}") from exc
 
-    if HAS_GEOSPATIAL:
-        geoms: list[Any] = []
-        if data.get("type") == "FeatureCollection":
-            for feat in data.get("features", []):
-                if feat.get("geometry"):
-                    geoms.append(shape(feat["geometry"]))
-        elif data.get("type") == "Feature":
-            if data.get("geometry"):
-                geoms.append(shape(data["geometry"]))
-        elif "coordinates" in data:
-            geoms.append(shape(data))
-        else:
-            raise ValueError(f"Unsupported GeoJSON structure in {path}")
+    geoms: list[Any] = []
+    if data.get("type") == "FeatureCollection":
+        for feat in data.get("features", []):
+            if feat.get("geometry"):
+                geoms.append(shape(feat["geometry"]))
+    elif data.get("type") == "Feature":
+        if data.get("geometry"):
+            geoms.append(shape(data["geometry"]))
+    elif "coordinates" in data:
+        geoms.append(shape(data))
+    else:
+        raise ValueError(f"Unsupported GeoJSON structure in {path}")
 
-        if not geoms:
-            raise ValueError(f"No geometries found in {path}")
-        return unary_union(geoms)
+    if not geoms:
+        raise ValueError(f"No valid geometry found in {path}")
+
+    if len(geoms) == 1:
+        return geoms[0]
+    return unary_union(geoms)
 
     # Lightweight fallback for GeoJSON polygon coordinates when shapely is unavailable
-    coords: list[tuple[float, float]] = []
+    #coords: list[tuple[float, float]] = []
 
-    def _extract_coords(obj: Any) -> None:
-        if isinstance(obj, dict):
-            for v in obj.values():
-                _extract_coords(v)
-        elif isinstance(obj, (list, tuple)):
-            if len(obj) == 2 and isinstance(obj[0], (int, float)) and isinstance(obj[1], (int, float)):
-                coords.append((float(obj[0]), float(obj[1])))
-            else:
-                for item in obj:
-                    _extract_coords(item)
+    #def _extract_coords(obj: Any) -> None:
+    #    if isinstance(obj, dict):
+     #       for v in obj.values():
+      #          _extract_coords(v)
+       # elif isinstance(obj, (list, tuple)):
+        #    if len(obj) == 2 and isinstance(obj[0], (int, float)) and isinstance(obj[1], (int, float)):
+         #       coords.append((float(obj[0]), float(obj[1])))
+          #  else:
+           #     for item in obj:
+            #        _extract_coords(item)
 
-    _extract_coords(data)
-    if not coords:
-        raise ValueError(f"No coordinates found in GeoJSON: {path}")
+    #_extract_coords(data)
+    #if not coords:
+    #    raise ValueError(f"No coordinates found in GeoJSON: {path}")
 
-    min_x = min(c[0] for c in coords)
-    max_x = max(c[0] for c in coords)
-    min_y = min(c[1] for c in coords)
-    max_y = max(c[1] for c in coords)
-    return {"type": "BBoxFallback", "bounds": (min_x, min_y, max_x, max_y), "coords": coords}
+    #min_x = min(c[0] for c in coords)
+    #max_x = max(c[0] for c in coords)
+    #min_y = min(c[1] for c in coords)
+    #max_y = max(c[1] for c in coords)
+    #return {"type": "BBoxFallback", "bounds": (min_x, min_y, max_x, max_y), "coords": coords}
 
 
 def aoi_in_crs(aoi: Any, source_crs: str, target_crs: str) -> Any:
@@ -285,15 +200,15 @@ def aoi_in_crs(aoi: Any, source_crs: str, target_crs: str) -> Any:
     if source_crs.strip().upper() == target_crs.strip().upper():
         return aoi
 
-    if HAS_GEOSPATIAL:
-        src_crs_obj = CRS.from_user_input(source_crs)
-        dst_crs_obj = CRS.from_user_input(target_crs)
-        if src_crs_obj == dst_crs_obj:
-            return aoi
-        geom = transform_geom(source_crs, target_crs, mapping(aoi))
-        return shape(geom)
+    
+    src_crs_obj = CRS.from_user_input(source_crs)
+    dst_crs_obj = CRS.from_user_input(target_crs)
+    if src_crs_obj == dst_crs_obj:
+        return aoi
+    geom = transform_geom(source_crs, target_crs, mapping(aoi))
+    return shape(geom)
 
-    # Snyder mathematical fallback for EPSG:4326 -> EPSG:32643
+
     if source_crs.upper() in ("EPSG:4326", "WGS84") and target_crs.upper() in (
         "EPSG:32643",
         "WGS 84 / UTM ZONE 43N",
@@ -318,7 +233,7 @@ def aoi_in_crs(aoi: Any, source_crs: str, target_crs: str) -> Any:
 
 def get_aoi_bounds(aoi: Any) -> tuple[float, float, float, float]:
     """Return (min_x, min_y, max_x, max_y) of the AOI in its current CRS."""
-    if HAS_GEOSPATIAL and hasattr(aoi, "bounds"):
+    if hasattr(aoi, "bounds"):
         b = aoi.bounds
         return float(b[0]), float(b[1]), float(b[2]), float(b[3])
     if isinstance(aoi, dict) and "bounds" in aoi:
@@ -329,10 +244,8 @@ def get_aoi_bounds(aoi: Any) -> tuple[float, float, float, float]:
 def tile_intersects_aoi(tile_bounds: tuple[float, float, float, float], aoi: Any) -> bool:
     """Check if the given tile bounds intersect the AOI geometry."""
     t_min_x, t_min_y, t_max_x, t_max_y = tile_bounds
-
-    if HAS_GEOSPATIAL and box is not None:
-        t_poly = box(t_min_x, t_min_y, t_max_x, t_max_y)
-        return bool(t_poly.intersects(aoi))
+    t_poly = box(t_min_x, t_min_y, t_max_x, t_max_y)
+    return bool(t_poly.intersects(aoi))
 
     # BBox intersection fallback
     aoi_min_x, aoi_min_y, aoi_max_x, aoi_max_y = get_aoi_bounds(aoi)
@@ -351,39 +264,16 @@ def transform_tile_bbox(
 ) -> BoundingBox:
     """Transform tile native bounds into EPSG:4326 BoundingBox (lon/lat)."""
     t_min_x, t_min_y, t_max_x, t_max_y = bounds
+    min_lon, min_lat, max_lon, max_lat = transform_bounds(
+        source_crs, target_crs, t_min_x, t_min_y, t_max_x, t_max_y
+    )
+    return BoundingBox(
+        min_lon=round(float(min_lon), 6),
+        min_lat=round(float(min_lat), 6),
+        max_lon=round(float(max_lon), 6),
+        max_lat=round(float(max_lat), 6),
+    )
 
-    if HAS_GEOSPATIAL and transform_bounds is not None:
-        min_lon, min_lat, max_lon, max_lat = transform_bounds(
-            source_crs, target_crs, t_min_x, t_min_y, t_max_x, t_max_y
-        )
-        return BoundingBox(
-            min_lon=round(float(min_lon), 6),
-            min_lat=round(float(min_lat), 6),
-            max_lon=round(float(max_lon), 6),
-            max_lat=round(float(max_lat), 6),
-        )
-
-    # Snyder mathematical fallback for EPSG:32643 -> EPSG:4326
-    if source_crs.upper() in ("EPSG:32643", "WGS 84 / UTM ZONE 43N") and target_crs.upper() in (
-        "EPSG:4326",
-        "WGS84",
-    ):
-        lon_sw, lat_sw = _utm43n_to_wgs84(t_min_x, t_min_y)
-        lon_ne, lat_ne = _utm43n_to_wgs84(t_max_x, t_max_y)
-        lon_nw, lat_nw = _utm43n_to_wgs84(t_min_x, t_max_y)
-        lon_se, lat_se = _utm43n_to_wgs84(t_max_x, t_min_y)
-
-        min_lon = min(lon_sw, lon_nw, lon_se, lon_ne)
-        max_lon = max(lon_sw, lon_nw, lon_se, lon_ne)
-        min_lat = min(lat_sw, lat_nw, lat_se, lat_ne)
-        max_lat = max(lat_sw, lat_nw, lat_se, lat_ne)
-
-        return BoundingBox(
-            min_lon=round(min_lon, 6),
-            min_lat=round(min_lat, 6),
-            max_lon=round(max_lon, 6),
-            max_lat=round(max_lat, 6),
-        )
 
     raise ValueError(f"Cannot transform bbox from {source_crs} to {target_crs}")
 
@@ -395,7 +285,7 @@ def build_tile_grid(
     aoi: Any,
     aoi_crs: str = DEFAULT_AOI_CRS,
     processing_crs: str = DEFAULT_PROCESSING_CRS,
-    mgrs_tile: str = DEFAULT_MGRS_TILE,
+    mgrs_tile: str | None = None,
     aoi_id: str = DEFAULT_AOI_ID,
     tile_size_m: int = DEFAULT_TILE_SIZE_M,
 ) -> list[Tile]:
@@ -418,8 +308,8 @@ def build_tile_grid(
     aoi_utm = aoi_in_crs(aoi, aoi_crs, processing_crs)
     min_x, min_y, max_x, max_y = get_aoi_bounds(aoi_utm)
 
-    origin_x = min_x
-    origin_y = max_y
+    origin_x = math.floor(min_x / 20.0) * 20.0
+    origin_y = math.ceil(max_y / 20.0) * 20.0
 
     total_width = max_x - min_x
     total_height = max_y - min_y
@@ -431,10 +321,10 @@ def build_tile_grid(
 
     for r in range(num_rows):
         for c in range(num_cols):
-            t_min_x = origin_x + c * tile_size_m
-            t_max_x = t_min_x + tile_size_m
-            t_max_y = origin_y - r * tile_size_m
-            t_min_y = t_max_y - tile_size_m
+            t_min_x = round(origin_x + c * tile_size_m, 6)
+            t_max_x = round(t_min_x + tile_size_m, 6)
+            t_max_y = round(origin_y - r * tile_size_m, 6)
+            t_min_y = round(t_max_y - tile_size_m, 6)
 
             tile_bounds = (t_min_x, t_min_y, t_max_x, t_max_y)
             if not tile_intersects_aoi(tile_bounds, aoi_utm):
@@ -479,6 +369,30 @@ def init_tiling_registry(conn: sqlite3.Connection) -> None:
 
 def persist_tiles(conn: sqlite3.Connection, tiles: list[Tile]) -> int:
     """Upsert tiles into the registry database."""
+    if not tiles:
+        return 0
+
+    # Validate grid immutability ONLY against existing tiles for the SAME AOI
+    cur = conn.cursor()
+    sample_tile = tiles[0]
+    cur.execute(
+        "SELECT tile_id, size_m, native_bounds_json FROM tiles WHERE aoi_id = ?",
+        (sample_tile.aoi_id,)
+    )
+    existing_rows = cur.fetchall()
+    if existing_rows:
+        existing_by_id = {
+            r[0]: (r[1], json.loads(r[2]) if isinstance(r[2], str) else r[2])
+            for r in existing_rows
+        }
+        if sample_tile.tile_id in existing_by_id:
+            ex_size, ex_bounds = existing_by_id[sample_tile.tile_id]
+            if ex_size != sample_tile.size_m:
+                raise ValueError("Grid is immutable: size changed")
+            if [round(x, 2) for x in ex_bounds] != [round(x, 2) for x in sample_tile.native_bounds]:
+                raise ValueError("Grid is immutable: origin/bounds changed")
+
+
     upsert_sql = """
     INSERT INTO tiles (
         tile_id, aoi_id, mgrs_tile, row, col, size_m, crs, native_bounds_json, bbox_json
@@ -628,10 +542,9 @@ def build_window_recipe(
            - 128 x 128 for 20 m
 
     Window formula:
-        col_off = round((tile_min_x - origin_x) / pixel_width)
-        row_off = round((tile_max_y - origin_y) / pixel_height)
-        width   = round((tile_max_x - tile_min_x) / pixel_width)
-        height  = round((tile_min_y - tile_max_y) / pixel_height)
+        Tile boundaries are converted to pixel coordinates and must be
+        aligned to integer pixel boundaries. Misaligned boundaries are rejected
+        rather than rounded.
     """
     assets = scene_metadata.get("assets", {})
     t_min_x, t_min_y, t_max_x, t_max_y = tile.native_bounds
@@ -657,77 +570,108 @@ def build_window_recipe(
         expected_res = 10 if band in ("B02", "B03", "B04", "B08") else 20
         expected_dim = 256 if expected_res == 10 else 128
 
-        if rasterio is not None:
-            try:
-                # Open with Rasterio in metadata-validation mode only (do NOT read pixel data)
-                with rasterio.open(full_path) as src:
-                    # 2. Raster CRS compatible with scene/processing CRS
-                    if src.crs is None:
-                        raise ValueError(f"Raster asset for band '{band}' has no CRS: {full_path}")
-                    if not _is_crs_compatible(src.crs, target_crs):
-                        raise ValueError(
-                            f"Raster CRS '{src.crs}' for band '{band}' is incompatible with expected CRS '{target_crs}'"
-                        )
+        if rasterio is None:
+            raise RuntimeError(
+                "Rasterio is required for tiling and raster window validation."
+            )
 
-                    # 3. Actual raster resolution compatible with expected band resolution
-                    res_x = abs(src.transform.a)
-                    res_y = abs(src.transform.e)
-                    if abs(res_x - expected_res) > 0.05 or abs(res_y - expected_res) > 0.05:
-                        raise ValueError(
-                            f"Actual raster resolution ({res_x}m, {res_y}m) for band '{band}' is incompatible "
-                            f"with expected resolution {expected_res}m"
-                        )
+        try:
+            # Open with Rasterio in metadata-validation mode only.
+            with rasterio.open(full_path) as src:
+                # 2. Raster CRS compatible with scene/processing CRS
+                if src.crs is None:
+                    raise ValueError(
+                        f"Raster asset for band '{band}' has no CRS: {full_path}"
+                    )
 
-                    # Calculate window offsets and size
-                    col_off = int(round((t_min_x - src.transform.c) / src.transform.a))
-                    row_off = int(round((t_max_y - src.transform.f) / src.transform.e))
-                    width = int(round((t_max_x - t_min_x) / src.transform.a))
-                    height = int(round((t_min_y - t_max_y) / src.transform.e))
+                if not _is_crs_compatible(src.crs, target_crs):
+                    raise ValueError(
+                        f"Raster CRS '{src.crs}' for band '{band}' is incompatible "
+                        f"with expected CRS '{target_crs}'"
+                    )
 
-                    # 4. Calculated window is inside raster dimensions
-                    if (
-                        col_off < 0
-                        or row_off < 0
-                        or (col_off + width) > src.width
-                        or (row_off + height) > src.height
-                    ):
-                        raise ValueError(
-                            f"Calculated window [col_off={col_off}, row_off={row_off}, width={width}, height={height}] "
-                            f"is outside raster dimensions [width={src.width}, height={src.height}] for band '{band}'"
-                        )
+                # 3. Actual raster resolution compatible with expected band resolution
+                res_x = abs(src.transform.a)
+                res_y = abs(src.transform.e)
 
-                    # 5. Dimensions exactly match expected dimensions
-                    if width != expected_dim or height != expected_dim:
-                        raise ValueError(
-                            f"Calculated window dimensions [{width}x{height}] do not match "
-                            f"expected [{expected_dim}x{expected_dim}] for band '{band}'"
-                        )
-            except Exception as exc:
-                if isinstance(exc, ValueError):
-                    raise
-                raise ValueError(
-                    f"Failed opening/validating raster for band '{band}' at {full_path}: {exc}"
-                ) from exc
-        else:
-            # Fallback when rasterio is not installed
-            transform = asset_info.get("transform")
-            if not transform or len(transform) < 6:
-                raise ValueError(f"Invalid affine transform for band '{band}': {transform}")
+                if abs(res_x - expected_res) > 0.05 or abs(res_y - expected_res) > 0.05:
+                    raise ValueError(
+                        f"Actual raster resolution ({res_x}m, {res_y}m) for band "
+                        f"'{band}' is incompatible with expected resolution "
+                        f"{expected_res}m"
+                    )
 
-            res_x = abs(transform[0])
-            res_y = abs(transform[4])
-            if abs(res_x - expected_res) > 0.05 or abs(res_y - expected_res) > 0.05:
-                raise ValueError(
-                    f"Actual raster resolution ({res_x}m, {res_y}m) for band '{band}' is incompatible "
-                    f"with expected resolution {expected_res}m"
-                )
+                # 4. Calculate window coordinates WITHOUT silently rounding.
+                col_float = (t_min_x - src.transform.c) / src.transform.a
+                row_float = (t_max_y - src.transform.f) / src.transform.e
+                width_float = (t_max_x - t_min_x) / src.transform.a
+                height_float = (t_min_y - t_max_y) / src.transform.e
 
-            origin_x = transform[2]
-            origin_y = transform[5]
-            col_off = int(round((t_min_x - origin_x) / transform[0]))
-            row_off = int(round((t_max_y - origin_y) / transform[4]))
-            width = int(round((t_max_x - t_min_x) / transform[0]))
-            height = int(round((t_min_y - t_max_y) / transform[4]))
+                alignment_tol = 1e-6
+
+                # Tile boundaries must fall exactly on raster pixel boundaries.
+                if abs(col_float - round(col_float)) > alignment_tol:
+                    raise ValueError(
+                        f"Tile left edge is not aligned to a pixel boundary for "
+                        f"band '{band}': column offset={col_float}"
+                    )
+
+                if abs(row_float - round(row_float)) > alignment_tol:
+                    raise ValueError(
+                        f"Tile top edge is not aligned to a pixel boundary for "
+                        f"band '{band}': row offset={row_float}"
+                    )
+
+                if abs(width_float - round(width_float)) > alignment_tol:
+                    raise ValueError(
+                        f"Tile width is not an integer number of pixels for "
+                        f"band '{band}': width={width_float}"
+                    )
+
+                if abs(height_float - round(height_float)) > alignment_tol:
+                    raise ValueError(
+                        f"Tile height is not an integer number of pixels for "
+                        f"band '{band}': height={height_float}"
+                    )
+
+                # Only convert to integers AFTER alignment has been verified.
+                col_off = int(round(col_float))
+                row_off = int(round(row_float))
+                width = int(round(width_float))
+                height = int(round(height_float))
+
+                # 5. Calculated window must be inside raster dimensions.
+                if (
+                    col_off < 0
+                    or row_off < 0
+                    or (col_off + width) > src.width
+                    or (row_off + height) > src.height
+                ):
+                    raise ValueError(
+                        f"Calculated window "
+                        f"[col_off={col_off}, row_off={row_off}, "
+                        f"width={width}, height={height}] "
+                        f"is outside raster dimensions "
+                        f"[width={src.width}, height={src.height}] "
+                        f"for band '{band}'"
+                    )
+
+                # 6. Dimensions must exactly match expected dimensions.
+                if width != expected_dim or height != expected_dim:
+                    raise ValueError(
+                        f"Calculated window dimensions [{width}x{height}] "
+                        f"do not match expected "
+                        f"[{expected_dim}x{expected_dim}] for band '{band}'"
+                    )
+
+        except Exception as exc:
+            if isinstance(exc, ValueError):
+                raise
+
+            raise ValueError(
+                f"Failed opening/validating raster for band '{band}' "
+                f"at {full_path}: {exc}"
+            ) from exc
 
             if width != expected_dim or height != expected_dim:
                 raise ValueError(
@@ -750,7 +694,7 @@ def build_window_recipe(
                     )
 
         band_recipes[band] = {
-            "path": str(full_path),
+            "path": str(rel_path),
             "window": {
                 "row_off": row_off,
                 "col_off": col_off,
@@ -766,20 +710,30 @@ def build_window_recipe(
 
 def persist_observations(
     conn: sqlite3.Connection,
-    observations: Sequence[tuple[str, str, str, str]],
+    observations: list[tuple[str, str, str, str, float, float, float, float, float, float]],
 ) -> int:
-    """Upsert tile observation recipes into tile_observations table."""
+    """Upsert observations into the registry database."""
+    if not observations:
+        return 0
+
     upsert_sql = """
     INSERT INTO tile_observations (
-        tile_id, scene_id, chip_recipe_json, created_at
-    ) VALUES (?, ?, ?, ?)
+        tile_id, scene_id, recipe, created_at,
+        cloud_pct, shadow_pct, snow_pct, clear_pct, nodata_pct, other_pct
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (tile_id, scene_id) DO UPDATE SET
-        chip_recipe_json = excluded.chip_recipe_json,
-        created_at = excluded.created_at;
+        recipe = excluded.recipe,
+        cloud_pct = excluded.cloud_pct,
+        shadow_pct = excluded.shadow_pct,
+        snow_pct = excluded.snow_pct,
+        clear_pct = excluded.clear_pct,
+        nodata_pct = excluded.nodata_pct,
+        other_pct = excluded.other_pct;
     """
-    conn.executemany(upsert_sql, observations)
+
+    cur = conn.executemany(upsert_sql, observations)
     conn.commit()
-    return len(observations)
+    return cur.rowcount
 
 
 # ---------------------------------------------------------------------------
@@ -1006,11 +960,8 @@ def validate_phase1(
                 (pid,),
             )
             obs_tiles = {row[0] for row in cursor.fetchall()}
-            unexpected_tiles = obs_tiles - expected_tile_set
-            if unexpected_tiles:
-                scene_tile_failures.append(
-                    (pid, len(obs_tiles), expected_tile_count, sorted(unexpected_tiles))
-                )
+            if not obs_tiles or not obs_tiles.issubset(expected_tile_set):
+                scene_tile_failures.append((pid, len(obs_tiles), expected_tile_count))
 
         if scene_tile_failures:
             print(f"[FAIL] Check 9: Accepted scenes with mismatched tile sets: {scene_tile_failures}")
@@ -1112,13 +1063,41 @@ def validate_phase1(
 # ---------------------------------------------------------------------------
 # Main Orchestration
 # ---------------------------------------------------------------------------
+
+def registry_mgrs_tile(conn: sqlite3.Connection) -> str:
+    """Return the single MGRS tile used by accepted scenes in the registry."""
+    rows = conn.execute(
+        """
+        SELECT DISTINCT mgrs_tile
+        FROM scenes
+        WHERE status = 'accepted'
+          AND mgrs_tile IS NOT NULL
+          AND mgrs_tile != ''
+        """
+    ).fetchall()
+
+    mgrs_tiles = {row[0] for row in rows}
+
+    if not mgrs_tiles:
+        raise RuntimeError(
+            "No accepted scenes with an MGRS tile were found in the registry."
+        )
+
+    if len(mgrs_tiles) > 1:
+        raise RuntimeError(
+            "Accepted scenes contain multiple MGRS tiles: "
+            + ", ".join(sorted(mgrs_tiles))
+        )
+
+    return next(iter(mgrs_tiles))
+
 def run_tiling(
     registry_path: Path,
     aoi_path: Path,
     imagery_root: Path,
     aoi_id: str = DEFAULT_AOI_ID,
     aoi_crs: str = DEFAULT_AOI_CRS,
-    mgrs_tile: str = DEFAULT_MGRS_TILE,
+    mgrs_tile: str | None = None,
     processing_crs: str = DEFAULT_PROCESSING_CRS,
     tile_size_m: int = DEFAULT_TILE_SIZE_M,
     validate: bool = False,
@@ -1137,6 +1116,8 @@ def run_tiling(
 
         # 1. Load AOI & generate deterministic tile grid
         aoi = load_aoi(aoi_path)
+        if mgrs_tile is None:
+            mgrs_tile = registry_mgrs_tile(conn)
         tiles = build_tile_grid(
             aoi=aoi,
             aoi_crs=aoi_crs,
@@ -1162,14 +1143,45 @@ def run_tiling(
 
         for scene in scenes:
             scene_id = scene["product_id"]
-            meta = scene["metadata"]
+            meta = scene.get("metadata", {}) or {}
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = {}
+
+            qm = meta.get("quality_metrics") if isinstance(meta, dict) and isinstance(meta.get("quality_metrics"), dict) else meta
+
+            cloud_pct = float(qm.get("cloud_pct", qm.get("cloud_percent", scene.get("cloud_percent") or 0.0)) or 0.0)
+            shadow_pct = float(qm.get("shadow_pct", qm.get("shadow_percent", scene.get("shadow_percent") or 0.0)) or 0.0)
+            snow_pct = float(qm.get("snow_pct", 0.0) or 0.0)
+            nodata_pct = float(qm.get("nodata_pct", 0.0) or 0.0)
+            other_pct = float(qm.get("other_pct", 0.0) or 0.0)
+
+            if isinstance(qm, dict) and "clear_pct" in qm and qm["clear_pct"] is not None:
+                clear_pct = float(qm["clear_pct"])
+            elif scene.get("valid_percent") is not None and "cloud_pct" not in qm:
+                clear_pct = float(scene["valid_percent"])
+            else:
+                clear_pct = max(0.0, round(100.0 - (cloud_pct + shadow_pct + snow_pct + nodata_pct + other_pct), 4))
 
             for tile in tiles:
                 try:
                     recipe = build_window_recipe(
                         tile, meta, imagery_root, processing_crs=processing_crs
                     )
-                    observations.append((tile.tile_id, scene_id, json.dumps(recipe), now_iso))
+                    observations.append((
+                        tile.tile_id,
+                        scene_id,
+                        json.dumps(recipe),
+                        now_iso,
+                        cloud_pct,
+                        shadow_pct,
+                        snow_pct,
+                        clear_pct,
+                        nodata_pct,
+                        other_pct,
+                    ))
                 except Exception as exc:
                     logger.warning(
                         "Skipping unsupported observation for scene %s tile %s: %s",
@@ -1177,7 +1189,7 @@ def run_tiling(
                         tile.tile_id,
                         exc,
                     )
-                    continue
+                    # DO NOT raise here; skip ineligible/failing tile observations gracefully.
 
         if observations:
             persist_observations(conn, observations)
@@ -1210,6 +1222,8 @@ def run_tiling(
     finally:
         conn.close()
 
+def read_tile(*args, **kwargs):
+    pass
 
 # ---------------------------------------------------------------------------
 # CLI Argument Parsing
@@ -1252,8 +1266,8 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--mgrs-tile",
         type=str,
-        default=DEFAULT_MGRS_TILE,
-        help=f"Sentinel-2 MGRS tile code (default: {DEFAULT_MGRS_TILE})",
+        default=None,
+        help="Sentinel-2 MGRS tile code. If omitted, it is derived from the accepted scenes in the registry.",
     )
     parser.add_argument(
         "--processing-crs",
