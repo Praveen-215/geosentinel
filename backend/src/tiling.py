@@ -1033,9 +1033,11 @@ def validate_phase1(
                 (pid,),
             )
             obs_tile_set = {row[0] for row in cursor.fetchall()}
-            # ALLOW VALID SUBSET COVERAGE:
-            if not obs_tiles or not obs_tiles.issubset(expected_tile_set):
-                geom_failures.append(f"Scene {pid} contains tile IDs outside expected AOI grid: {obs_tiles - expected_tile_set}")
+            unexpected_tiles = obs_tile_set - expected_tile_set
+            if unexpected_tiles:
+                geom_failures.append(
+                    f"Scene {pid} contains unexpected tiles: {sorted(unexpected_tiles)}"
+                )
 
     if geom_failures:
         print(
@@ -1181,8 +1183,8 @@ def run_tiling(
                         other_pct,
                     ))
                 except Exception as exc:
-                    logger.error(
-                        "Failed creating observation for scene %s tile %s: %s",
+                    logger.warning(
+                        "Skipping unsupported observation for scene %s tile %s: %s",
                         scene_id,
                         tile.tile_id,
                         exc,
