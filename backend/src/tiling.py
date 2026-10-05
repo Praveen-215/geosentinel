@@ -22,6 +22,7 @@ import logging
 import math
 import re
 import sqlite3
+import numpy as np
 import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -98,10 +99,24 @@ BAND_RESOLUTIONS: dict[str, int] = {
     "SCL": 20,
 }
 
+
+SCL_NO_DATA = {0}
+SCL_SHADOW = {3}
+SCL_CLEAR = {4, 5, 6}
+SCL_CLOUD = {8, 9, 10}
+SCL_SNOW = {11}
+SCL_WATER = {12}
+SCL_CLOUD_MEDIUM = {13}
+SCL_CLOUD_HIGH = {14}
+SCL_CLOUD_VERY_HIGH = {15}
+SCL_CLOUD_PROBABLY_HIGH = {16}
+SCL_CLOUD_PROBABLY_MEDIUM = {17}
+SCL_CLOUD_PROBABLY_LOW = {18}
+
 # Database Schema
 TILES_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS tiles (
-    tile_id TEXT PRIMARY KEY,
+    tile_id TEXT NOT NULL,
     aoi_id TEXT NOT NULL,
     mgrs_tile TEXT NOT NULL,
     row INTEGER NOT NULL,
@@ -109,13 +124,15 @@ CREATE TABLE IF NOT EXISTS tiles (
     size_m INTEGER NOT NULL,
     crs TEXT NOT NULL,
     native_bounds_json TEXT NOT NULL,
-    bbox_json TEXT NOT NULL
+    bbox_json TEXT NOT NULL,
+    PRIMARY KEY (tile_id, aoi_id)
 );
 """
 
 TILE_OBSERVATIONS_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS tile_observations (
     tile_id TEXT NOT NULL,
+    aoi_id TEXT NOT NULL DEFAULT 'default',
     scene_id TEXT NOT NULL,
     recipe JSON NOT NULL,
     created_at TEXT NOT NULL,
@@ -125,8 +142,8 @@ CREATE TABLE IF NOT EXISTS tile_observations (
     clear_pct REAL DEFAULT 100.0,
     nodata_pct REAL DEFAULT 0.0,
     other_pct REAL DEFAULT 0.0,
-    PRIMARY KEY (tile_id, scene_id),
-    FOREIGN KEY (tile_id) REFERENCES tiles (tile_id) ON DELETE CASCADE
+    PRIMARY KEY (tile_id, aoi_id, scene_id),
+    FOREIGN KEY (tile_id, aoi_id) REFERENCES tiles (tile_id, aoi_id) ON DELETE CASCADE
 );
 """
 
@@ -308,8 +325,9 @@ def build_tile_grid(
     aoi_utm = aoi_in_crs(aoi, aoi_crs, processing_crs)
     min_x, min_y, max_x, max_y = get_aoi_bounds(aoi_utm)
 
-    origin_x = math.floor(min_x / 20.0) * 20.0
-    origin_y = math.ceil(max_y / 20.0) * 20.0
+    # Fix floating point precision drop during grid origin snapping:
+    origin_x = math.floor(round(min_x, 4) / 20.0) * 20.0
+    origin_y = math.ceil(round(max_y, 4) / 20.0) * 20.0
 
     total_width = max_x - min_x
     total_height = max_y - min_y
@@ -356,6 +374,51 @@ def build_tile_grid(
     tiles.sort(key=lambda t: (t.row, t.col))
     return tiles
 
+def compute_scl_quality(
+    recipe: dict,
+    imagery_root: Path,
+) -> dict[str, float]:
+    """Read the tile's SCL window and compute tile-level quality percentages."""
+
+    scl_recipe = recipe["bands"]["SCL"]
+
+    scl_path = imagery_root / scl_recipe["path"]
+    window_data = scl_recipe["window"]
+
+    window = Window(
+        col_off=window_data["col_off"],
+        row_off=window_data["row_off"],
+        width=window_data["width"],
+        height=window_data["height"],
+    )
+
+    with rasterio.open(scl_path) as src:
+        scl = src.read(1, window=window)
+    
+
+    total = int(scl.size)
+
+    if total == 0:
+        raise ValueError("SCL tile window is empty")
+
+    cloud = int(np.isin(scl, list(SCL_CLOUD)).sum())
+    shadow = int(np.isin(scl, list(SCL_SHADOW)).sum())
+    snow = int(np.isin(scl, list(SCL_SNOW)).sum())
+    clear = int(np.isin(scl, list(SCL_CLEAR)).sum())
+    nodata = int(np.isin(scl, list(SCL_NO_DATA)).sum())
+
+    classified = cloud + shadow + snow + clear + nodata
+    other = total - classified
+
+    return {
+        "cloud_pct": 100.0 * cloud / total,
+        "shadow_pct": 100.0 * shadow / total,
+        "snow_pct": 100.0 * snow / total,
+        "clear_pct": 100.0 * clear / total,
+        "nodata_pct": 100.0 * nodata / total,
+        "other_pct": 100.0 * other / total,
+    }
+
 
 # ---------------------------------------------------------------------------
 # Database Registry Operations
@@ -397,8 +460,7 @@ def persist_tiles(conn: sqlite3.Connection, tiles: list[Tile]) -> int:
     INSERT INTO tiles (
         tile_id, aoi_id, mgrs_tile, row, col, size_m, crs, native_bounds_json, bbox_json
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (tile_id) DO UPDATE SET
-        aoi_id = excluded.aoi_id,
+    ON CONFLICT (tile_id, aoi_id) DO UPDATE SET
         mgrs_tile = excluded.mgrs_tile,
         row = excluded.row,
         col = excluded.col,
@@ -606,6 +668,7 @@ def build_window_recipe(
                 row_float = (t_max_y - src.transform.f) / src.transform.e
                 width_float = (t_max_x - t_min_x) / src.transform.a
                 height_float = (t_min_y - t_max_y) / src.transform.e
+                
 
                 alignment_tol = 1e-6
 
@@ -718,10 +781,10 @@ def persist_observations(
 
     upsert_sql = """
     INSERT INTO tile_observations (
-        tile_id, scene_id, recipe, created_at,
+        tile_id, aoi_id, scene_id, recipe, created_at,
         cloud_pct, shadow_pct, snow_pct, clear_pct, nodata_pct, other_pct
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (tile_id, scene_id) DO UPDATE SET
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (tile_id, aoi_id, scene_id) DO UPDATE SET
         recipe = excluded.recipe,
         cloud_pct = excluded.cloud_pct,
         shadow_pct = excluded.shadow_pct,
@@ -939,37 +1002,74 @@ def validate_phase1(
     else:
         print(f"[PASS] Check 8: All tile native bounds are exactly {tile_size_m}m × {tile_size_m}m")
 
-    # 9. Observation completeness: every accepted scene has the expected tile set
-    cursor.execute("SELECT product_id FROM scenes WHERE status = 'accepted' ORDER BY product_id;")
-    accepted_pids = [row[0] for row in cursor.fetchall()]
+# 9. Observation completeness: every accepted scene has its expected tile set
+    import rasterio
+    from shapely.geometry import box, shape
+
+    # Fetch native bounds for all tiles in this AOI
+    cursor.execute("SELECT tile_id, native_bounds_json FROM tiles WHERE aoi_id = ?;", (aoi_id,))
+    tile_shapes = {}
+    for tid, nb_raw in cursor.fetchall():
+        if nb_raw:
+            nb = json.loads(nb_raw) if isinstance(nb_raw, str) else nb_raw
+            tile_shapes[tid] = box(*nb) if isinstance(nb, (list, tuple)) and len(nb) == 4 else shape(nb)
+
+    # Fetch accepted scenes and columns
+    cursor.execute("PRAGMA table_info(scenes);")
+    cols = {r[1] for r in cursor.fetchall()}
+    
+    select_cols = ["product_id"]
+    if "filepath" in cols:
+        select_cols.append("filepath")
+    elif "raster_path" in cols:
+        select_cols.append("raster_path")
+        
+
+    cursor.execute(f"SELECT {', '.join(select_cols)} FROM scenes WHERE status = 'accepted' ORDER BY product_id;")
+    accepted_rows = cursor.fetchall()
+    accepted_pids = [r[0] for r in accepted_rows]
 
     expected_tile_set = set(tile_ids)
     expected_tile_count = len(tile_ids)
 
-    if not accepted_pids:
+
+    if not accepted_rows:
         print("[PASS] Check 9: No accepted scenes currently registered (0 observations expected)")
     else:
         scene_tile_failures = []
-        for pid in accepted_pids:
+        for row in accepted_rows:
+            pid = row[0]
+            path = row[1] if len(row) > 1 and row[1] and isinstance(row[1], str) and ("." in row[1] or "/" in row[1]) else None
+            
+            # Determine expected tiles for this scene based on actual raster bounds
+            expected_set = set(tile_ids)
+            if path:
+                try:
+                    with rasterio.open(path) as src:
+                        scene_box = box(*src.bounds)
+                        expected_set = {tid for tid, tshape in tile_shapes.items() if tshape.intersects(scene_box)}
+                except Exception:
+                    pass
+            
+
             cursor.execute(
                 """
                 SELECT tile_id FROM tile_observations
-                WHERE scene_id = ?
+                WHERE scene_id = ? AND aoi_id = ?
                 ORDER BY tile_id;
                 """,
-                (pid,),
+                (pid, aoi_id),
             )
-            obs_tiles = {row[0] for row in cursor.fetchall()}
-            if not obs_tiles or not obs_tiles.issubset(expected_tile_set):
-                scene_tile_failures.append((pid, len(obs_tiles), expected_tile_count))
+            obs_tiles = {r[0] for r in cursor.fetchall()}
+
+            if obs_tiles != expected_set:
+                scene_tile_failures.append((pid, len(obs_tiles), len(expected_set)))
 
         if scene_tile_failures:
             print(f"[FAIL] Check 9: Accepted scenes with mismatched tile sets: {scene_tile_failures}")
             all_passed = False
         else:
-            print(
-                f"[PASS] Check 9: Every accepted scene has the expected tile set ({len(accepted_pids)} scenes, {expected_tile_count} tiles/scene)"
-            )
+            print(f"[PASS] Check 9: Every accepted scene has expected tile set ({len(accepted_rows)} scenes)")
 
     # 10. Persisted tile geometry associated with tile IDs is identical, deterministic, and free of conflicts
     geom_failures: list[str] = []
@@ -1140,6 +1240,7 @@ def run_tiling(
         # 4. Generate & persist window recipes for each tile observation
         observations: list[tuple[str, str, str, str]] = []
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        failed_scenes = set()
 
         for scene in scenes:
             scene_id = scene["product_id"]
@@ -1170,17 +1271,19 @@ def run_tiling(
                     recipe = build_window_recipe(
                         tile, meta, imagery_root, processing_crs=processing_crs
                     )
+                    scl_quality = compute_scl_quality(recipe, imagery_root)
                     observations.append((
                         tile.tile_id,
+                        aoi_id,
                         scene_id,
                         json.dumps(recipe),
                         now_iso,
-                        cloud_pct,
-                        shadow_pct,
-                        snow_pct,
-                        clear_pct,
-                        nodata_pct,
-                        other_pct,
+                        scl_quality["cloud_pct"],
+                        scl_quality["shadow_pct"],
+                        scl_quality["snow_pct"],
+                        scl_quality["clear_pct"],
+                        scl_quality["nodata_pct"],
+                        scl_quality["other_pct"],
                     ))
                 except Exception as exc:
                     logger.warning(
@@ -1189,6 +1292,7 @@ def run_tiling(
                         tile.tile_id,
                         exc,
                     )
+                    failed_scenes.add(scene_id)
                     # DO NOT raise here; skip ineligible/failing tile observations gracefully.
 
         if observations:
@@ -1203,6 +1307,7 @@ def run_tiling(
             "accepted_scene_count": len(scenes),
             "observation_count": len(observations),
             "scene_ids": [s["product_id"] for s in scenes],
+            "failed_scenes": list(failed_scenes),
         }
 
         if validate:
@@ -1222,8 +1327,108 @@ def run_tiling(
     finally:
         conn.close()
 
-def read_tile(*args, **kwargs):
-    pass
+def read_tile(
+    conn: sqlite3.Connection,
+    imagery_root: Path | str,
+    tile_id: str,
+    scene_id: str,
+    bands: tuple[str, ...],
+    margin_m: float = 0.0,
+    to_10m: bool = False,
+    reflectance: bool = False,
+    pad: bool = False,
+    aoi_id: str = "default",
+) -> dict[str, np.ndarray]:
+    """Read windowed pixel data for a given tile and scene."""
+    import json
+    import numpy as np
+    import rasterio
+    from rasterio.windows import Window
+    from rasterio.enums import Resampling
+
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT recipe FROM tile_observations
+        WHERE tile_id = ? AND scene_id = ?
+        ORDER BY (aoi_id = ?) DESC
+        LIMIT 1;
+        """,
+        (tile_id, scene_id, aoi_id),
+    )
+    row = cursor.fetchone()
+    if not row:
+        raise ValueError(f"No observation found for tile '{tile_id}' and scene '{scene_id}'")
+
+    recipe = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    band_recipes = recipe.get("bands", {})
+
+    baseline_val = 0.0
+    if reflectance:
+        cursor.execute("SELECT processing_baseline FROM scenes WHERE product_id = ?;", (scene_id,))
+        srow = cursor.fetchone()
+        if srow and srow[0]:
+            try:
+                baseline_val = float(srow[0])
+            except ValueError:
+                baseline_val = 0.0
+
+    result = {}
+    imagery_root_path = Path(imagery_root)
+
+    for band in bands:
+        if band not in band_recipes:
+            raise ValueError(f"Band '{band}' not found in observation recipe")
+
+        b_info = band_recipes[band]
+        full_path = imagery_root_path / b_info["path"]
+        win_info = b_info["window"]
+
+        col_off = win_info["col_off"]
+        row_off = win_info["row_off"]
+        width = win_info["width"]
+        height = win_info["height"]
+        res_m = b_info["resolution_m"]
+
+        margin_px = int(round(margin_m / res_m))
+        target_col_off = col_off - margin_px
+        target_row_off = row_off - margin_px
+        target_w = width + 2 * margin_px
+        target_h = height + 2 * margin_px
+
+        resampling = Resampling.nearest if band == "SCL" else Resampling.bilinear
+
+        if to_10m and res_m != 10:
+            scale = res_m / 10.0
+            out_shape = (int(round(target_h * scale)), int(round(target_w * scale)))
+        else:
+            out_shape = (target_h, target_w)
+
+        use_boundless = pad or (margin_m > 0)
+
+        with rasterio.open(full_path) as src:
+            window = Window(target_col_off, target_row_off, target_w, target_h)
+            arr = src.read(
+                1,
+                window=window,
+                out_shape=out_shape,
+                resampling=resampling,
+                boundless=use_boundless,
+                fill_value=0,
+            )
+
+        if reflectance and band != "SCL":
+            arr = arr.astype(np.float32)
+            nodata_mask = (arr == 0)
+            if baseline_val >= 5.0:
+                arr = (arr - 1000.0) / 10000.0
+            else:
+                arr = arr / 10000.0
+            arr[nodata_mask] = np.nan
+
+        result[band] = arr
+
+    return result
 
 # ---------------------------------------------------------------------------
 # CLI Argument Parsing
