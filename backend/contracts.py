@@ -13,6 +13,12 @@ from typing import Optional
 
 # Change types the backend produces (PS 2.2.2). Frontend enum must include them.
 CHANGE_TYPES = ("CONSTRUCTION", "CLEARANCE", "WATER", "ROAD")
+CHANGE_DIRECTIONS = (
+    "APPEARANCE",
+    "DISAPPEARANCE",
+    "EXPANSION",
+    "CONTRACTION",
+)
 CHECK_STATUS = ("PASS", "WARN", "FAIL")
 CONFIDENCE_BUCKETS = ("HIGH", "MEDIUM", "LOW")
 DISPOSITIONS = ("confirmed", "rejected", "flagged")
@@ -149,6 +155,59 @@ class ChangeQuery:
 
 
 @dataclass
+class BandChangeEvidence:
+    band: str
+    delta: float
+    magnitude: float
+    support: float
+    relevance: Optional[float] = None
+
+
+@dataclass
+class IndexChangeEvidence:
+    index: str
+    before: float
+    after: float
+    delta: float
+    magnitude: float
+    support: float
+
+
+@dataclass
+class SpatialChangeEvidence:
+    changed_pixel_percent: float
+    largest_region_percent: float
+    connected_region_count: int
+    spatial_coherence: float
+    area_change_percent: float
+
+
+@dataclass
+class TemporalObservationEvidence:
+    scene_id: str
+    acquisition_date: str
+    usable: bool
+    quality_score: float
+    change_score: float
+    persistent_with_previous: Optional[bool] = None
+    notes: list[str] = field(default_factory=list)
+
+
+@dataclass
+class TemporalChangeEvidence:
+    observations: list[TemporalObservationEvidence]
+    persistence_score: float
+    supported_observation_count: int
+    usable_observation_count: int
+    trajectory: str
+    earliest_candidate_scene_id: Optional[str] = None
+    earliest_candidate_date: Optional[str] = None
+    earliest_supported_scene_id: Optional[str] = None
+    earliest_supported_date: Optional[str] = None
+    persistence_status: str = "UNKNOWN"
+
+
+@dataclass
 class ChangeResult:
     id: str                     # candidate id, used by ReviewDecision
     aoi: str
@@ -163,6 +222,15 @@ class ChangeResult:
     change_mask: Optional[str] = None    # path/URL to mask image, if produced
     before_image_url: Optional[str] = None
     after_image_url: Optional[str] = None
+    direction: Optional[str] = None
+    band_evidence: Optional[dict[str, BandChangeEvidence]] = None
+    index_evidence: Optional[list[IndexChangeEvidence]] = None
+    spatial_evidence: Optional[SpatialChangeEvidence] = None
+    temporal_evidence: Optional[TemporalChangeEvidence] = None
+    persistence_status: Optional[str] = None
+    explanation: Optional[str] = None
+    warnings: list[str] = field(default_factory=list)
+    artifacts: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass

@@ -227,6 +227,56 @@ export interface ChangeAnalysisRun {
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FLAGGED';
 }
 
+export type ChangeDirection = 'APPEARANCE' | 'DISAPPEARANCE' | 'EXPANSION' | 'CONTRACTION';
+
+export interface BandChangeEvidence {
+  band: string;
+  delta: number;
+  magnitude: number;
+  support: number;
+  relevance?: number | null;
+}
+
+export interface IndexChangeEvidence {
+  index: string;
+  before: number;
+  after: number;
+  delta: number;
+  magnitude: number;
+  support: number;
+}
+
+export interface SpatialChangeEvidence {
+  changedPixelPercent: number;
+  largestRegionPercent: number;
+  connectedRegionCount: number;
+  spatialCoherence: number;
+  areaChangePercent: number;
+}
+
+export interface TemporalObservationEvidence {
+  sceneId: string;
+  acquisitionDate: string;
+  usable: boolean;
+  qualityScore: number;
+  changeScore: number;
+  persistentWithPrevious?: boolean | null;
+  notes: string[];
+}
+
+export interface TemporalChangeEvidence {
+  observations: TemporalObservationEvidence[];
+  persistenceScore: number;
+  supportedObservationCount: number;
+  usableObservationCount: number;
+  trajectory: string;
+  earliestCandidateSceneId?: string | null;
+  earliestCandidateDate?: string | null;
+  earliestSupportedSceneId?: string | null;
+  earliestSupportedDate?: string | null;
+  persistenceStatus: string;
+}
+
 export interface ChangeResult {
   id: string;
   aoi: string;
@@ -241,6 +291,15 @@ export interface ChangeResult {
   changeMask?: string;
   beforeImageUrl?: string;
   afterImageUrl?: string;
+  direction?: ChangeDirection;
+  bandEvidence?: Record<string, BandChangeEvidence>;
+  indexEvidence?: IndexChangeEvidence[];
+  spatialEvidence?: SpatialChangeEvidence;
+  temporalEvidence?: TemporalChangeEvidence;
+  persistenceStatus?: string;
+  explanation?: string;
+  warnings?: string[];
+  artifacts?: Record<string, string>;
 }
 
 export interface ChangeAnalysisPayload {
